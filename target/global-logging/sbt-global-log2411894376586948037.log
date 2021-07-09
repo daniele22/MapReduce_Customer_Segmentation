@@ -1,0 +1,103 @@
+[debug] > Exec(early(addDefaultCommands), None, None)
+[debug] > Exec(addDefaultCommands, None, None)
+[debug] > Exec(early(initialize), None, None)
+[debug] > Exec(initialize, None, None)
+[debug] > Exec(early(addPluginSbtFile="""C:\Users\hp\AppData\Local\Temp\idea.sbt"""), None, None)
+[debug] > Exec(addPluginSbtFile="""C:\Users\hp\AppData\Local\Temp\idea.sbt""", None, None)
+[debug] > Exec(boot, None, None)
+[debug] > Exec(writeSbtVersion, None, None)
+[debug] > Exec(reload, None, None)
+[debug] > Exec(sbtStashOnFailure, None, None)
+[debug] > Exec(onFailure loadFailed, None, None)
+[debug] > Exec(loadp, None, None)
+[info] welcome to sbt 1.4.7 (Oracle Corporation Java 1.8.0_77)
+[debug]       Load.loadUnit: plugins took 275.4671ms
+[debug]       Load.loadUnit: defsScala took 0.5386ms
+[debug] [Loading] Scanning directory C:\Users\hp\.sbt\1.0\plugins
+[debug] [Loading] Found non-root projects 
+[debug] [Loading] Done in C:\Users\hp\.sbt\1.0\plugins, returning: ()
+[debug] deducing auto plugins based on known facts Set(Atom(sbt.plugins.CorePlugin)) and clauses Clauses(List(Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.IvyPlugin))), Clause(Atom(sbt.ScriptedPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.SbtPlugin),Set(Atom(sbt.ScriptedPlugin))), Clause(Atom(sbt.plugins.SemanticdbPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.JUnitXmlReportPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.MiniDependencyTreePlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.IvyPlugin))), Clause(Atom(sbt.plugins.IvyPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.SemanticdbPlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.JUnitXmlReportPlugin))), Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.Giter8TemplatePlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.MiniDependencyTreePlugin)))))
+[debug]   :: deduced result: Matched(sbt.plugins.CorePlugin,sbt.plugins.Giter8TemplatePlugin,sbt.plugins.IvyPlugin,sbt.plugins.JvmPlugin,sbt.plugins.MiniDependencyTreePlugin,sbt.plugins.JUnitXmlReportPlugin,sbt.plugins.SemanticdbPlugin)
+[debug] Plugins.deducer#function took 15.0176 ms
+[debug]           Load.resolveProject(global-plugins) took 41.1536ms
+[debug]         Load.loadTransitive: finalizeProject(Project(id global-plugins, base: C:\Users\hp\.sbt\1.0\plugins, plugins: List(<none>))) took 78.7296ms
+[debug] [Loading] Done in C:\Users\hp\.sbt\1.0\plugins, returning: (global-plugins)
+[debug]       Load.loadUnit: loadedProjectsRaw took 98.264199ms
+[debug]       Load.loadUnit: cleanEvalClasses took 0.2343ms
+[debug]     Load.loadUnit(file:/C:/Users/hp/.sbt/1.0/plugins/, ...) took 384.062701ms
+[debug]   Load.apply: load took 541.7643ms
+[debug]   Load.apply: resolveProjects took 5.0584ms
+[debug]   Load.apply: finalTransforms took 50.9917ms
+[debug]   Load.apply: config.delegates took 6.888301ms
+[debug]   Load.apply: Def.make(settings)... took 687.0751ms
+[debug]   Load.apply: structureIndex took 97.9404ms
+[debug]   Load.apply: mkStreams took 1.6126ms
+[info] loading global plugins from C:\Users\hp\.sbt\1.0\plugins
+[debug] Running task... Cancel: Signal, check cycles: false, forcegc: true
+[debug] Load.defaultLoad until apply took 2787.110801ms
+[debug]           Load.loadUnit: plugins took 25.0167ms
+[debug]           Load.loadUnit: defsScala took 0.0028ms
+[debug] [Loading] Scanning directory C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation\project
+[debug]             Load.loadUnit: mkEval took 5.690499ms
+[debug] [Loading] Found non-root projects 
+[debug] [Loading] Done in C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation\project, returning: ()
+[debug] deducing auto plugins based on known facts Set(Atom(sbt.plugins.CorePlugin)) and clauses Clauses(List(Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.IvyPlugin))), Clause(Atom(sbt.ScriptedPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.SbtPlugin),Set(Atom(sbt.ScriptedPlugin))), Clause(Atom(sbt.plugins.SemanticdbPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.JUnitXmlReportPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.MiniDependencyTreePlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.IvyPlugin))), Clause(Atom(sbt.plugins.IvyPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.SemanticdbPlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.JUnitXmlReportPlugin))), Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.Giter8TemplatePlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.MiniDependencyTreePlugin)))))
+[debug]   :: deduced result: Matched(sbt.plugins.CorePlugin,sbt.plugins.Giter8TemplatePlugin,sbt.plugins.IvyPlugin,sbt.plugins.JvmPlugin,sbt.plugins.MiniDependencyTreePlugin,sbt.plugins.JUnitXmlReportPlugin,sbt.plugins.SemanticdbPlugin)
+[debug] Plugins.deducer#function took 1.073901 ms
+[info] loading settings for project mapreduce_customer_segmentation-build from idea.sbt ...
+[debug]               Load.resolveProject(mapreduce_customer_segmentation-build) took 2.5301ms
+[debug]             Load.loadTransitive: finalizeProject(Project(id mapreduce_customer_segmentation-build, base: C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation\project, plugins: List(<none>))) took 3.9545ms
+[debug] [Loading] Done in C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation\project, returning: (mapreduce_customer_segmentation-build)
+[debug]           Load.loadUnit: loadedProjectsRaw took 511.5233ms
+[debug]           Load.loadUnit: cleanEvalClasses took 6.7247ms
+[debug]         Load.loadUnit(file:/C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/MapReduce_Customer_Segmentation/project/, ...) took 544.3568ms
+[debug]       Load.apply: load took 545.433801ms
+[debug]       Load.apply: resolveProjects took 0.0791ms
+[debug]       Load.apply: finalTransforms took 16.634ms
+[debug]       Load.apply: config.delegates took 0.3849ms
+[debug]       Load.apply: Def.make(settings)... took 95.0113ms
+[debug]       Load.apply: structureIndex took 27.893ms
+[debug]       Load.apply: mkStreams took 0.003ms
+[info] loading project definition from C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation\project
+[debug] Running task... Cancel: Signal, check cycles: false, forcegc: true
+[debug]     Load.loadUnit: plugins took 1985.4766ms
+[debug]     Load.loadUnit: defsScala took 0.001901ms
+[debug] [Loading] Scanning directory C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation
+[debug]       Load.loadUnit: mkEval took 0.2183ms
+[debug] [Loading] Found non-root projects 
+[debug] [Loading] Done in C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation, returning: ()
+[debug] deducing auto plugins based on known facts Set(Atom(sbt.plugins.CorePlugin)) and clauses Clauses(List(Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.IvyPlugin))), Clause(Atom(sbt.ScriptedPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.SbtPlugin),Set(Atom(sbt.ScriptedPlugin))), Clause(Atom(sbt.plugins.SemanticdbPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.JUnitXmlReportPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.MiniDependencyTreePlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(org.jetbrains.sbt.StructurePlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(org.jetbrains.sbt.IdeaShellPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(org.jetbrains.sbt.indices.SbtIntellijIndicesPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.IvyPlugin))), Clause(Atom(sbt.plugins.IvyPlugin),Set(Atom(sbt.plugins.JvmPlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.SemanticdbPlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.JUnitXmlReportPlugin))), Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.Giter8TemplatePlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.MiniDependencyTreePlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(org.jetbrains.sbt.StructurePlugin))), Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(org.jetbrains.sbt.IdeaShellPlugin))), Clause(And(Set(Atom(sbt.plugins.CorePlugin), Atom(sbt.plugins.JvmPlugin))),Set(Atom(org.jetbrains.sbt.indices.SbtIntellijIndicesPlugin)))))
+[debug]   :: deduced result: Matched(sbt.plugins.CorePlugin,sbt.plugins.Giter8TemplatePlugin,sbt.plugins.IvyPlugin,sbt.plugins.JvmPlugin,sbt.plugins.SemanticdbPlugin,org.jetbrains.sbt.indices.SbtIntellijIndicesPlugin,sbt.plugins.JUnitXmlReportPlugin,org.jetbrains.sbt.IdeaShellPlugin,org.jetbrains.sbt.StructurePlugin,sbt.plugins.MiniDependencyTreePlugin)
+[debug] Plugins.deducer#function took 2.9219 ms
+[info] loading settings for project mapreduce_customer_segmentation from build.sbt ...
+[debug]         Load.resolveProject(mapreduce_customer_segmentation) took 59.471ms
+[debug]       Load.loadTransitive: finalizeProject(Project(id mapreduce_customer_segmentation, base: C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation, plugins: List(<none>))) took 64.500599ms
+[debug] [Loading] Done in C:\Users\hp\Desktop\Uni\magistrale\Scalable_and_cloud_programming\Progetto\MapReduce_Customer_Segmentation, returning: (mapreduce_customer_segmentation)
+[debug]     Load.loadUnit: loadedProjectsRaw took 5827.746099ms
+[debug]     Load.loadUnit: cleanEvalClasses took 70.9815ms
+[debug]   Load.loadUnit(file:/C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/MapReduce_Customer_Segmentation/, ...) took 7884.8297ms
+[debug] Load.apply: load took 7886.6944ms
+[debug] Load.apply: resolveProjects took 0.118ms
+[debug] Load.apply: finalTransforms took 37.3633ms
+[debug] Load.apply: config.delegates took 0.6175ms
+[debug] Load.apply: Def.make(settings)... took 166.7727ms
+[debug] Load.apply: structureIndex took 49.3542ms
+[debug] Load.apply: mkStreams took 0.0028ms
+[info] set current project to MapReduce_Customer_Segmentation (in build file:/C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/MapReduce_Customer_Segmentation/)
+[debug] > Exec(sbtPopOnFailure, None, None)
+[debug] > Exec(resumeFromFailure, None, None)
+[debug] > Exec(notifyUsersAboutShell, None, None)
+[debug] > Exec(iflast shell, None, None)
+[debug] > Exec(; set ideaPort in Global := 56736 ; idea-shell, None, None)
+[debug] > Exec(set ideaPort in Global := 56736, None, None)
+[info] Defining Global / ideaPort
+[info] The new value will be used by Compile / compile, Test / compile
+[debug] Defining 
+[debug] 	Global / ideaPort
+[debug] 
+[debug] The new value will be used by 
+[debug] 	Compile / compile
+[debug] 	Test / compile
+[info] Reapplying settings...
+[info] set current project to MapReduce_Customer_Segmentation (in build file:/C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/MapReduce_Customer_Segmentation/)
+[debug] > Exec(idea-shell, None, None)

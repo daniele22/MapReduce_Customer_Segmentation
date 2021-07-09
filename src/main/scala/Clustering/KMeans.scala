@@ -32,10 +32,11 @@ import org.apache.log4j.{Logger => mylogger}
 import org.apache.log4j.Level
 import org.apache.spark
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.types.{StringType, StructField, StructType}
+
 
 //spark session with schema
 import org.apache.spark.sql.types._
+
 
 object KMeans extends java.io.Serializable{
 
@@ -49,69 +50,11 @@ object KMeans extends java.io.Serializable{
   val inference_filename: String = base_path+"/test_points.csv"
   val epsilon = 0.0001
   val numK = 4 // clusters number
-  val randomX = new Random
-  val randomY = new Random
-  val maxCoordinate = 100.0
+//  val randomX = new Random
+//  val randomY = new Random
+//  val maxCoordinate = 100.0
 
-  // generation of a file with coordinates of random points
-  // num_features determines the dimension of the vectorial space
-  def genFile(num_features: Int): Unit = {
-    println("Generation of a new file with " + num_features + " columns")
-    // minimum number of features 2
-    if(num_features < 2) throw new Exception("Error num_features must be greater equal to 2")
-    // generation params
-    val distance = 80.0
-    val numPoints = 100000
-    val randomPoint = new Random
-    val min = -100
-    val max = 100
 
-    // generation of the initial points
-    val initial_points: Array[Array[Double]] = new Array[Array[Double]](numK)
-    for(i <- 0 until numK) {
-//      println("initial points array at iteration " + i + " has size: " + initial_points.length + " with elements:")
-//      println("Init points interno: " +i+" ")
-//      println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
-      val elem: Array[Double] = ( // for comprhension to build an array of double
-        for {
-          j <- 0 until num_features
-        } yield min+(math.random()*((max-min) + 1))
-      ).toArray
-//      println("Creation of array " + i + ": "+ elem.mkString(" "))
-      initial_points(i) = elem
-    }
-
-    println("Init points array: ")
-    println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
-    println("The centroids returned by the clustering algorithms must be almost equal to these points!")
-
-    // Write the inital points to a file in order to check the algorithms results
-    val fileOfPointsOut = new File(gen_initpoints_filename)
-    val bw_points = new BufferedWriter(new FileWriter(fileOfPointsOut))
-    for(arr <- initial_points){
-      for(coordinate <- arr){
-        bw_points.write(coordinate.toString+"\t")
-      }
-      bw_points.write("\n")
-    }
-    bw_points.close()
-
-    //val initPoints = Vector((50.0, 50.0), (50.0, -50.0), (-50.0, 50.0), (-50.0, -50.0)) // queste dovranno risultare essere anche circa le coordinate dei centroidi ottenuti con l'algoritmo di k-means
-
-    // Write random points to a file
-    val file  = new File(gen_filename)
-    val bw = new BufferedWriter(new FileWriter(file))
-    for (i <- 0 until numPoints){
-      val centroid = initial_points(randomPoint.nextInt(initial_points.length))
-      for(j <- 0 until num_features){
-        val feature_value = (randomX.nextDouble()-0.5) * distance
-        bw.write((centroid(j) + feature_value) + "\t")
-        //bw.write((centroid._1+x)+"\t"+(centroid._2+y)+"\n")
-      }
-      bw.write("\n")
-    }
-    bw.close()
-  }
 
   // compute the distance between two points
   //  def distance(p1: (Double, Double), p2: (Double, Double)) =
@@ -186,42 +129,7 @@ object KMeans extends java.io.Serializable{
     val rootLogger = mylogger.getRootLogger()
     rootLogger.setLevel(Level.ERROR)
 
-    def readTxtFileAndMakeCsv(inputFilename: String, outputFilename: String): Unit = {
 
-      def getSchemaStr(current_str: String, index: Int): String ={
-        if(index == numK) return current_str
-        else getSchemaStr(current_str + "col"+index+" ", index+1)
-      }
-
-      val schemaString = getSchemaStr("", 0)
-//      println("SCHEMA STRING: "+schemaString)
-      val fields = schemaString.split("\\s+")
-        .map(fieldName => StructField(fieldName, StringType, nullable=true))
-      val schema = StructType(fields)
-      val fileRdd =
-        spark.sparkContext.textFile(inputFilename)
-          .map(_.split("\\s+"))
-          .map{x => org.apache.spark.sql.Row(x:_*)}
-      fileRdd.collect().foreach(println)
-      println("Number of elements: " + fileRdd.count())
-      val df_from_file = sqlContext.createDataFrame(fileRdd, schema)
-      df_from_file.show()
-
-      // writing the csv file, this scala function creates a folder with inside the csv file
-      df_from_file
-        .coalesce(1)  // to obtain a single file
-        .write
-        .format("csv")
-        .mode("overwrite") // if the file already exists overwrite it
-        .save(outputFilename)
-    }
-
-    // load csv file
-    val inputFilename = base_path+"/test_points_4col.txt" //"C:/Users/hp/IdeaProjects/ScalableCourseExamples/src/main/scala/05_Distributed_Parallel_Programming/kmeans_points.txt"
-    val outputFilename = base_path+"/test_points_4col" // creates a folder
-    val file = spark.sparkContext.textFile(inputFilename)
-    // read txt file and create a csv in the new location
-    //readTxtFileAndMakeCsv(inputFilename, outputFilename)
 
 
 //    val dfWithSchema = spark.read.option("header", "true")

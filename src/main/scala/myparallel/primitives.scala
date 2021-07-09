@@ -57,3 +57,14 @@ object primitives {
 
 }
 
+
+/*
+  def writeToCSV(filename: String, data: RDD[(Double, Double)]): Unit = {
+    def printToFile(fileName: String)(op: java.io.PrintWriter => Unit) {
+      val p = new java.io.PrintWriter(fileName)
+      try { op(p) } finally { p.close() }
+    }
+
+    printToFile("src/main/resources/Plot/" + filename) { p => data.map(x => x._1 + "," + x._2).collect().foreach(p.println) }
+  }
+ */
