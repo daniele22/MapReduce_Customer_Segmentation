@@ -54,7 +54,17 @@ object NumberOfPointsWithinDistanceDriver extends Serializable {
       clock.logTimeSinceStart("Calculation of number of points within " + distance)
     }
   }
-  
+
+  def run(data: RawDataSet, settings: DbscanSettings): Seq[(Double, Double, Long)] = {
+    val partitioningSettings = new PartitioningSettings(numberOfPointsInBox =
+      PartitioningSettings.DefaultNumberOfPointsInBox)
+    val histogram = createNumberOfPointsWithinDistanceHistogram(data, settings, partitioningSettings)
+      //argsParser.args.numberOfBuckets) //TODO check!
+
+    val triples = ExploratoryAnalysisHelper.convertHistogramToTriples(histogram)
+    triples
+  }
+
   /**
    * This method allows for the histogram to be created and used programmatically.
    * 

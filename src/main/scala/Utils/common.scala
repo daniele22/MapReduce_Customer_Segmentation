@@ -2,7 +2,7 @@ package Utils
 
 import java.io.{BufferedWriter, File, FileWriter, PrintStream, PrintWriter}
 
-import Clustering.KmeansII.{inference_filename, initializationMode, maxIterations, numClusters, numEpsilon}
+import Clustering.KmeansII.{initializationMode, maxIterations, numClusters, numEpsilon}
 import Utils.common.printToFile
 import myparallel.primitives.time
 import org.apache.log4j.Level
@@ -16,9 +16,14 @@ import org.apache.spark.sql.types.{StringType, StructField, StructType}
 import scala.annotation.tailrec
 import scala.util.Random
 
+import Utils.Const._
+
 object common {
 
-  def time[R](block: => R): R = {
+  /**
+   * Record the time a function needs to complete its work
+   */
+  def time[R](block: => R): R = {  // lazy evaluation for block
     val t0 = System.nanoTime()
     val result = block    // call-by-name
     val t1 = System.nanoTime()
@@ -26,8 +31,10 @@ object common {
     result
   }
 
-
-
+  /**
+   * this function print some content to a specific file
+   * @param fileName file path in which the text is going to be printed
+   */
   private [Utils] def printToFile(fileName: String)(op: java.io.PrintWriter => Unit) {
     val p = new java.io.PrintWriter(new File(fileName))
     try {
@@ -62,12 +69,35 @@ object common {
    * @param column_names name of the columns to use as header, this param is optional and can be empty, in this case no
    *                     header will be present in the resulting file
    */
-  def writeResToCSV(filename: String, data: RDD[(Array[Double], Int)], column_names: Vector[String] = Vector()): Unit = {
+  def writeResToCSV(filename: String, data: RDD[(Vector[Double], Int)],
+                    column_names: Vector[String] = Vector()): Unit = {
     val elemSize = data.takeSample(false, 1, 42)(0)._1.length
     if(column_names.nonEmpty) assert(column_names.length == elemSize)
 
     val dataToWrite = getColNames(column_names) ++
       data.map(x => x._1.mkString(",") + "," + x._2).collect()
+    printToFile(filename) {
+      p => dataToWrite.foreach(p.println)
+      //p => data.map(x => x._1 + "," + x._2).collect().foreach(p.println) }
+    }
+  }
+
+  /**
+   * Write an RDD[Row] to a csv file
+   * @param filename name of the file csv that will be created with the results
+   * @param data data to write in the file
+   * @param column_names name of the columns to use as header, this param is optional and can be empty, in this case no
+   *                     header will be present in the resulting file
+   */
+  def writeToCSV(filename: String, data: RDD[Row],
+                    column_names: Vector[String] = Vector()): Unit = {
+    println("run write on file csv")
+    val elemSize = data.takeSample(false, 1, 42)(0).mkString(" ").split(" ").length
+    if(column_names.nonEmpty) assert(column_names.length == elemSize)
+
+    val dataToWrite = Vector(column_names.mkString(",")) ++
+      data.map(x => x.mkString(",")).collect()
+    println("run printing")
     printToFile(filename) {
       p => dataToWrite.foreach(p.println)
       //p => data.map(x => x._1 + "," + x._2).collect().foreach(p.println) }
@@ -94,6 +124,37 @@ object common {
 //    }
 //  }
 
+  /**
+   * this function compute a random vector of coordinates for a point
+   * with the dimension equal to the num_features given as input
+   * @return vector of coordinate
+   */
+  private [common] def getPointCoord(num_features: Int, minCoord: Double,
+                                     maxCoord: Double): Vector[Double] ={
+    (for {
+      j <- (0 until num_features).par
+    } yield minCoord+(math.random()*((maxCoord-minCoord) + 1))
+      ).toVector
+  }
+
+  /**
+   * function used to save the initial points (the centroids) calculated by the gen function
+   * to a txt file.
+   * @param filename file path in which the points will be saved
+   * @param initial_points vector of the inital point, this will have dimension numK
+   */
+  private [common] def saveInitialPointsToTxtFile(filename: String,
+                                                  initial_points: Vector[Vector[Double]]): Unit = {
+    val fileOfPointsOut = new File(filename)
+    val bw_points = new BufferedWriter(new FileWriter(fileOfPointsOut))
+    for(arr <- initial_points){
+      for(coordinate <- arr){
+        bw_points.write(coordinate.toString+"\t")
+      }
+      bw_points.write("\n")
+    }
+    bw_points.close()
+  }
 
   // generation of a file with coordinates of random points
   // num_features determines the dimension of the vectorial space
@@ -126,43 +187,23 @@ object common {
     val randomPoint = new Random
 
     // generation of the initial points
-    val initial_points: Array[Array[Double]] = new Array[Array[Double]](numK)
-    for(i <- 0 until numK) {
-      //      println("initial points array at iteration " + i + " has size: " + initial_points.length + " with elements:")
-      //      println("Init points interno: " +i+" ")
-      //      println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
-      val elem: Array[Double] = (
-        for {
-          j <- 0 until num_features
-        } yield minCoord+(math.random()*((maxCoord-minCoord) + 1))
-        ).toArray
-      //      println("Creation of array " + i + ": "+ elem.mkString(" "))
-      initial_points(i) = elem
-    }
+    val initial_points: Vector[Vector[Double]] = (for { i <- (0 until numK).par }
+      yield getPointCoord(num_features, minCoord, maxCoord)).toVector
 
     println("Init points array: ")
     println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
     println("The centroids returned by the clustering algorithms must be almost equal to these points!")
 
-    // Write the inital points to a file in order to check the algorithms results
-    val fileOfPointsOut = new File(gen_initpoints_filename)
-    val bw_points = new BufferedWriter(new FileWriter(fileOfPointsOut))
-    for(arr <- initial_points){
-      for(coordinate <- arr){
-        bw_points.write(coordinate.toString+"\t")
-      }
-      bw_points.write("\n")
-    }
-    bw_points.close()
+    // (1) Write the inital points to a .txt file in order to check the algorithms results
+    saveInitialPointsToTxtFile(gen_initpoints_filename, initial_points)
 
     //val initPoints = Vector((50.0, 50.0), (50.0, -50.0), (-50.0, 50.0), (-50.0, -50.0)) // queste dovranno risultare essere anche circa le coordinate dei centroidi ottenuti con l'algoritmo di k-means
 
-    // Write random points to a file
+    // (2) Write random points to a .txt file
     val file  = new File(gen_filename)
     val bw = new BufferedWriter(new FileWriter(file))
     for (i <- 0 until numPoints){
       val centroid = initial_points(randomPoint.nextInt(initial_points.length))
-
       for(j <- 0 until num_features){
         val feature_value = (random.nextDouble()-0.5) * distance
         bw.write((centroid(j) + feature_value) + "\t")
@@ -185,7 +226,8 @@ object common {
    *                                algorithm to this file
    * @param gen_filename path to file that contains the resulting points
    * @param numPoints number of points generated
-   * @param distance distance to the cluster center that is used to generate the points
+   * @param distance distance to the cluster center that is used to generate the clouds points, note
+   *                 this measur influence the fact that some clouds  may overlap
    * @param minCoord minimum coordinate
    * @param maxCoord maximum coordinate
    */
@@ -201,38 +243,36 @@ object common {
     val random = new Random
     val randomPoint = new Random
 
-    // generation of the initial points
-    val initial_points: Array[Array[Double]] = new Array[Array[Double]](numK)
-    for(i <- 0 until numK) {
-      //      println("initial points array at iteration " + i + " has size: " + initial_points.length + " with elements:")
-      //      println("Init points interno: " +i+" ")
-      //      println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
-      val elem: Array[Double] = (
-        for {
-          j <- 0 until num_features
-        } yield minCoord+(math.random()*((maxCoord-minCoord) + 1))
-        ).toArray
-      //      println("Creation of array " + i + ": "+ elem.mkString(" "))
-      initial_points(i) = elem
-    }
+//    // generation of the initial points
+//    val initial_points: Array[Array[Double]] = new Array[Array[Double]](numK)
+//    for(i <- 0 until numK) {
+//      //      println("initial points array at iteration " + i + " has size: " + initial_points.length + " with elements:")
+//      //      println("Init points interno: " +i+" ")
+//      //      println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
+//      val elem: Array[Double] = (
+//        for {
+//          j <- 0 until num_features
+//        } yield minCoord+(math.random()*((maxCoord-minCoord) + 1))
+//        ).toArray
+//      //      println("Creation of array " + i + ": "+ elem.mkString(" "))
+//      initial_points(i) = elem
+//    }
+
+    // generation of the initial points, these are the points used to generate a random
+    // clouds of points around these specific initial points
+    val initial_points: Vector[Vector[Double]] = (for { i <- 0 until numK }
+      yield getPointCoord(num_features, minCoord, maxCoord)).toVector
 
     println("Init points array: ")
     println(initial_points.foreach{x => if(x != null) println(x.mkString(" ")) else println("Null")})
     println("The centroids returned by the clustering algorithms must be almost equal to these points!")
 
-    // Write the inital points to a file in order to check the algorithms results
-    val fileOfPointsOut = new File(gen_initpoints_filename)
-    val bw_points = new BufferedWriter(new FileWriter(fileOfPointsOut))
-    for(arr <- initial_points){
-      for(coordinate <- arr){
-        bw_points.write(coordinate.toString+"\t")
-      }
-      bw_points.write("\n")
-    }
-    bw_points.close()
+    // (1) Write the "inital points" to a .txt file in order to check the algorithms results
+    saveInitialPointsToTxtFile(gen_initpoints_filename, initial_points)
 
     //val initPoints = Vector((50.0, 50.0), (50.0, -50.0), (-50.0, 50.0), (-50.0, -50.0)) // queste dovranno risultare essere anche circa le coordinate dei centroidi ottenuti con l'algoritmo di k-means
 
+    // (2) Write the n points created to a csv file
     val dataToWrite = for {
       i <- (0 until numPoints).toVector
       centroid = initial_points(randomPoint.nextInt(initial_points.length))
@@ -243,7 +283,7 @@ object common {
       //      j <- 0 until num_features
       //      feature_value = (random.nextDouble()-0.5) * distance
     } yield elem.mkString(",")
-
+    // print the computed data to a csv file
     printToFile(gen_filename) {
       p => dataToWrite.foreach(p.println)
       //p => data.map(x => x._1 + "," + x._2).collect().foreach(p.println) }

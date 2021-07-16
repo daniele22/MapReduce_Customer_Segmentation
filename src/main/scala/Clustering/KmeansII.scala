@@ -11,6 +11,7 @@ Useful resources:
 
 package Clustering
 
+import Utils.Const._
 import org.apache.log4j.Level
 import org.apache.log4j.{Logger => mylogger}
 import org.apache.spark.mllib.clustering.KMeans.K_MEANS_PARALLEL
@@ -24,9 +25,6 @@ import org.apache.spark.rdd.RDD
 
 object KmeansII {
 
-  val base_path = "C:/Users/hp/IdeaProjects/MapReduce_Customer_Segmentation/src/main/scala/Clustering"
-  //val inference_filename: String = "C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/dataset/Online_Retail_II/customer_data.csv"
-  val inference_filename: String = base_path+"/test_points.csv"
 
 
   // Parameters of the model
@@ -38,6 +36,35 @@ object KmeansII {
   val initializationMode: String = K_MEANS_PARALLEL  // this is the new type of initialization that should be more efficient
 //  val initializationMode: String = RANDOM // with random initialization mode we will get same resul as the original lloyd's algorithm
   val numEpsilon = 1e-4
+
+  def run(VectorData: RDD[org.apache.spark.mllib.linalg.Vector]): Unit = {
+    // (2) A KMeans object is initialized and the parameters are set to define the number of clusters and
+    // the maximum number of iterations to determine them
+    val kMeans = new KMeans()
+    kMeans.setK( numClusters )
+    kMeans.setMaxIterations( maxIterations )
+    kMeans.setInitializationMode( initializationMode )
+    kMeans.setEpsilon( numEpsilon )
+    kMeans.setSeed(42)
+
+    // (3) Train the model to get the clusters, there are two functions available
+    // run(): Train a K-means model on the given set of points; data should be cached for high performance, because this is an iterative algorithm.
+    // train(): Trains a k-means model using the given set of parameters.
+    // documentation kmenasmodel class: https://spark.apache.org/docs/latest/api/java/org/apache/spark/mllib/clustering/KMeansModel.html
+    val kMeansModel = kMeans.run( VectorData )
+
+    // (4) Evaluate clustering by computing Within Set Sum of Squared Errors
+    //      val kMeansCost_WSS = kMeansModel.computeCost( VectorData ) // WSS = Within Set Sum of Squared Error
+    //      println( "Input data rows : " + VectorData.count() )
+    //      println( "K-Means Cost  : " + kMeansCost_WSS )
+    //      println( "Training cost: " + kMeansModel.trainingCost)
+    kMeansModel.clusterCenters.foreach{ println }
+
+    // (5) Save model
+    //kMeansModel.save(spark.sparkContext, base_path) // This saves: - human-readable (JSON) model metadata to path/metadata/ - Parquet formatted data to path/data/
+    // load model
+    //val sameModel = KMeansModel.load(spark.sparkContext, base_path)
+  }
 
   def main(args: Array[String]): Unit = {
 
@@ -69,38 +96,10 @@ object KmeansII {
       csvLine => Vectors.dense( csvLine.split(',').map(_.toDouble))
     }.cache()
 
-    def run(): Unit = {
-      // (2) A KMeans object is initialized and the parameters are set to define the number of clusters and
-      // the maximum number of iterations to determine them
-      val kMeans = new KMeans()
-      kMeans.setK( numClusters )
-      kMeans.setMaxIterations( maxIterations )
-      kMeans.setInitializationMode( initializationMode )
-      kMeans.setEpsilon( numEpsilon )
-      kMeans.setSeed(42)
-
-      // (3) Train the model to get the clusters, there are two functions available
-      // run(): Train a K-means model on the given set of points; data should be cached for high performance, because this is an iterative algorithm.
-      // train(): Trains a k-means model using the given set of parameters.
-      // documentation kmenasmodel class: https://spark.apache.org/docs/latest/api/java/org/apache/spark/mllib/clustering/KMeansModel.html
-      val kMeansModel = kMeans.run( VectorData )
-
-      // (4) Evaluate clustering by computing Within Set Sum of Squared Errors
-//      val kMeansCost_WSS = kMeansModel.computeCost( VectorData ) // WSS = Within Set Sum of Squared Error
-//      println( "Input data rows : " + VectorData.count() )
-//      println( "K-Means Cost  : " + kMeansCost_WSS )
-//      println( "Training cost: " + kMeansModel.trainingCost)
-      kMeansModel.clusterCenters.foreach{ println }
-
-      // (5) Save model
-      //kMeansModel.save(spark.sparkContext, base_path) // This saves: - human-readable (JSON) model metadata to path/metadata/ - Parquet formatted data to path/data/
-      // load model
-      //val sameModel = KMeansModel.load(spark.sparkContext, base_path)
-    }
 
     // Run the model
     println("EXECUTION OF THE KMEANS|| MODEL (MLlib version)")
-    time(run())
+    time(run(VectorData))
 
   }
 }

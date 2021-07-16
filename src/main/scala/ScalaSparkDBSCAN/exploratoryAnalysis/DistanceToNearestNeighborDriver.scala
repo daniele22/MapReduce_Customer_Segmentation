@@ -47,7 +47,8 @@ object DistanceToNearestNeighborDriver extends DistanceCalculation with Serializ
   }
 
   def run(data: RawDataSet, settings: DbscanSettings): Seq[(Double, Double, Long)] = {
-    val partitioningSettings = new PartitioningSettings(numberOfPointsInBox = PartitioningSettings.DefaultNumberOfPointsInBox)
+    val partitioningSettings = new PartitioningSettings(numberOfPointsInBox =
+      PartitioningSettings.DefaultNumberOfPointsInBox)
     val histogram = createNearestNeighborHistogram(data: RawDataSet, settings, partitioningSettings)
 
     val triples = ExploratoryAnalysisHelper.convertHistogramToTriples(histogram)

@@ -14,19 +14,16 @@ import org.apache.spark.sql.SparkSession
 //import breeze.plot._
 import ScalaSparkDBSCAN.exploratoryAnalysis.DistanceToNearestNeighborDriver
 import org.apache.spark.rdd.RDD
+import ScalaSparkDBSCAN.exploratoryAnalysis.NumberOfPointsWithinDistanceDriver
 
+import Utils.Const._
 
 
 object DBSCAN_Distributed extends java.io.Serializable{
 
-  val base_path = "C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/MapReduce_Customer_Segmentation/src/main/scala"
-  //val inference_filename: String = "C:/Users/hp/Desktop/Uni/magistrale/Scalable_and_cloud_programming/Progetto/dataset/Online_Retail_II/customer_data.csv"
-  val inference_filename: String = base_path+"/Clustering/test_points.csv"
-  val img_filepath = base_path+"/Img"
-
   // Parameters of the model
   val minPts = 6
-  val epsilon = 3
+  val epsilon = 1.45
 
   def numberOfClusters(model: DbscanModel): Int = {
     val clusterIdsRdd: RDD[ClusterId] = model.allPoints.map(_.clusterId) // get the clusterid assigned to each point
@@ -45,6 +42,7 @@ object DBSCAN_Distributed extends java.io.Serializable{
 
   def countPointsPerCluster(model: DbscanModel): RDD[(ClusterId, Int)] = {
     val clusteredPoints = model.clusteredPoints
+    //clusteredPoints.map(point => (point.clusterId, 1)).countByKey()
     clusteredPoints.map(point => (point.clusterId, 1)).reduceByKey(_+_)  // points per cluster
   }
 
@@ -65,7 +63,7 @@ object DBSCAN_Distributed extends java.io.Serializable{
 
     println("Read csv file")
     // Read csv file with the IOHelper class
-    val data = IOHelper.readDataset(spark.sparkContext, inference_filename, hasHeader = true)
+    val data = IOHelper.readDataset(spark.sparkContext, img_pkg_path, hasHeader = true)
 
     println("Set dbscan settings")
     // Specify parameters of the DBSCAN algorithm using SparkSettings class
@@ -90,13 +88,21 @@ object DBSCAN_Distributed extends java.io.Serializable{
     val numOfNoisePoints = noisePoints.count().toInt
     println("Number of noise points: " + numOfNoisePoints)
 
-    val triple = DistanceToNearestNeighborDriver.run(data, clusteringSettings)
+    val triple1 = DistanceToNearestNeighborDriver.run(data, clusteringSettings)
     println("Triple:")
-    println(triple)
+    println(triple1)
 
-    val X = triple.map(element => "(" + element._1.toString + " - " + element._1.toString + ")")
-    val Y = triple.map(_._2)
-    Plot.saveBarChart(Y, X, img_filepath+"/dbscan_barchart.png")
+    val X = triple1.map(element => "(" + element._1.toString + " - " + element._1.toString + ")")
+    val Y = triple1.map(_._2)
+    Plot.saveBarChart(Y, X, img_pkg_path+"/dbscan_DistanceToNearestNeighbor.png")
+
+    val triple2 = NumberOfPointsWithinDistanceDriver.run(data, clusteringSettings)
+    println("Triple 2:")
+    println(triple2)
+
+    val X2 = triple2.map(element => "(" + element._1.toString + " - " + element._1.toString + ")")
+    val Y2 = triple2.map(_._2)
+    Plot.saveBarChart(Y2, X2, img_pkg_path+"/dbscan_NumberOfPointsWithinDistance.png")
     
 //    val XY = X zip Y
 //    val barplot_data = Seq(
