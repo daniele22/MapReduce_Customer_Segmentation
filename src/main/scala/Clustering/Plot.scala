@@ -1,3 +1,11 @@
+/*
+This class contain implementation of methods that are used to plot the results of some computation on a graph
+and save it in the resource folder.
+
+The plots are realized using evilplot library: https://cibotech.github.io/evilplot/plot-catalog.html#bar-chart
+
+@author Daniele Filippini
+ */
 package Clustering
 
 import com.cibo.evilplot._
@@ -22,6 +30,14 @@ import Utils.Const._
 
 object Plot {
 
+  /**
+   * Create and save a barchart
+   * @param data y axis values
+   * @param labels x axis labels, one per each bar
+   * @param filepath file in which the plot will be saved
+   * @param positive_val_color color for positive values in the plot
+   * @param negative_val_color color for negative values in the plot
+   */
   def saveBarChart(data: Seq[Double], labels: Seq[String],
                    filepath: String,
                    positive_val_color : (Int, Int, Int) = (241, 121, 6),
@@ -77,12 +93,12 @@ object Plot {
 
 
   /**
-   *
+   * Creates a pairplot useful to visualize the clustering results
    * @param data a list of couples (coordinates: Vector, cluster id: Int)
    * @param labels the names of the features that the coordinates represent
    * @param filepath file in which the resulting plot will be saved
    */
-  def savePairPlot(data: Array[(Vector[Double], Int)], labels: Seq[String],
+  def savePairPlot(data: Array[(Int, Vector[Double])], labels: Seq[String],
                    filepath: String): Unit = {
     //val labels = Vector("a", "b", "c", "d")
 //    val dataToPlot = for (i <- 1 to labels.length) yield {
@@ -92,9 +108,9 @@ object Plot {
     println("Run save pair plot .........")
     val plt = for (i <- 1 to labels.length) yield {
       for (j <- 1 to labels.length) yield {
-        val xdata = data.map(elem => elem._1(i-1))
-        val ydata = data.map(elem => elem._1(j-1))
-        val clusterIds = data.map(elem => elem._2)
+        val xdata = data.map(elem => elem._2(i-1))
+        val ydata = data.map(elem => elem._2(j-1))
+        val clusterIds = data.map(elem => elem._1)
         // Use an instance of the class Point3D to memorize the cluster id and use it to plot the points
         // with different colors based on the points' classes
         val points = (xdata, ydata, clusterIds).zipped.map{ (a, b, c) => Point3d(a, b, c) }
@@ -128,6 +144,17 @@ object Plot {
       .render()
       .write(new File(img_pkg_path + "/kmeans_pairplot.png"))
 
+  }
+
+  def saveLinePlot(wss_list: Seq[Double], clusters_range: Seq[Int]) = {
+    val data = clusters_range.zip(wss_list).map(pair => Point(pair._1, pair._2))
+
+    LinePlot.series(data, "WSSSE elbow", HSL(210, 100, 56))
+      .xAxis().yAxis().frame()
+      .xLabel("Number of cluster")
+      .yLabel("WSSSE")
+      .render()
+      .write(new File(img_pkg_path + "/kmeans_elbow.png"))
   }
 
   def main(args: Array[String]): Unit = {

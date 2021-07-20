@@ -1,5 +1,11 @@
 /*
-This is an iterative algorithm that will make multiple passes over the data, so any RDDs given to it should be cached by the user.
+Scalable K-Means++ is a different implementation of the K-means algorithm where changes the initialization phase,
+that is made more efficient, the initial centroids are not chosen at random.
+
+This class uses the Spark API MLlib to implement the algorithm.
+
+This is an iterative algorithm that will make multiple passes over the data, so any RDDs given to it should be
+cached by the user.
 
 Useful resources:
   - https://spark.apache.org/docs/latest/ml-clustering.html
@@ -24,8 +30,6 @@ import org.apache.spark.rdd.RDD
 
 
 object KmeansII {
-
-
 
   // Parameters of the model
   val numClusters = 4
@@ -54,10 +58,11 @@ object KmeansII {
     val kMeansModel = kMeans.run( VectorData )
 
     // (4) Evaluate clustering by computing Within Set Sum of Squared Errors
-    //      val kMeansCost_WSS = kMeansModel.computeCost( VectorData ) // WSS = Within Set Sum of Squared Error
-    //      println( "Input data rows : " + VectorData.count() )
-    //      println( "K-Means Cost  : " + kMeansCost_WSS )
-    //      println( "Training cost: " + kMeansModel.trainingCost)
+    val kMeansCost_WSS = kMeansModel.computeCost( VectorData ) // WSS = Within Set Sum of Squared Error
+
+    println( "Input data rows : " + VectorData.count() )
+    println( "K-Means Cost  : " + kMeansCost_WSS )
+    println( "Training cost: " + kMeansModel.trainingCost)
     kMeansModel.clusterCenters.foreach{ println }
 
     // (5) Save model
@@ -86,7 +91,7 @@ object KmeansII {
     // (1) the CSV data is loaded from the data file and split by comma characters into the VectorData variable
     val data = spark.sparkContext.textFile(inference_filename)
     var csvData: RDD[String] = data
-    val hasHeader = true
+    val hasHeader = false
     if(hasHeader){
       val header = data.first() // extract the header
       csvData = data.filter(row => row != header)  // filter out reader

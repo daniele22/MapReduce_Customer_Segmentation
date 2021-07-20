@@ -1,3 +1,10 @@
+/*
+This class contains utility functions used to manage the files, the time of execution of the models and other
+common tasks.
+
+@author Daniele Filippini
+ */
+
 package Utils
 
 import java.io.{BufferedWriter, File, FileWriter, PrintStream, PrintWriter}
@@ -310,16 +317,14 @@ object common {
 
   /**
    * This function is used to read a .txt file and obtain a dataframe containing the data
-   * TODO comments
-   * @param inputFilename
-   * @param outputFilename
-   * @param numK
-   * @param spark
+   * @param inputFilename file .txt with the input data
+   * @param numK number of clusters
+   * @param spark SparkSession
    * @param sqlContext
-   * @return
+   * @return sql.Dataframe with the data of the txt file
    */
-  def readTxtFileAndMakeDF(inputFilename: String, outputFilename: String,
-                           numK: Int, spark: SparkSession, sqlContext: SQLContext): DataFrame = {
+  def readTxtFileAndMakeDF(inputFilename: String, numK: Int,
+                           spark: SparkSession, sqlContext: SQLContext): DataFrame = {
     @tailrec
     def getSchemaStr(current_str: String, index: Int, numK: Int): String ={
       if(index == numK) current_str

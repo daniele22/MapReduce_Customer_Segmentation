@@ -1,6 +1,19 @@
+/*
+This class implements the methods to do the data preprocessing phase needed to obtain clean data that can be
+used to complete the customer segmentation task.
+
+The class contains three methods used to do data preprocessing on the three analysed datasets:
+  - Online Retail
+  - Instacart
+  - Multi Category Shop
+
+The files with the preprocessed data are saved in the resources folder.
+
+@author Daniele Filippini
+ */
 package DataPreprocessing
 
-import Utils.Const.{base_path, clustering_pkg_path, dataset_path, onlineretail_file}
+import Utils.Const.{base_path, clustering_pkg_path, dataset_path, onlineretail_file, resources_pkg_path}
 import Utils.common.time
 import org.apache.log4j.Level
 import org.apache.log4j.{Logger => mylogger}
@@ -17,8 +30,15 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.sql
 import org.apache.spark.ml.functions.vector_to_array
 
+import scala.annotation.tailrec
+
 
 object preprocessing {
+
+//  final val spark: SparkSession = SparkSession.builder()
+//    .master("local[*]")
+//    .appName("Customer Segmentation")
+//    .getOrCreate()
 
   /**
    * Load the data from a csv file and print some statistics about the users
@@ -34,7 +54,7 @@ object preprocessing {
       .option("header", hasHeader.toString)
       .option("mode", "DROPMALFORMED")
       .load(filepath)
-      .limit(10000)  // only for testing purposes
+      //.limit(10000)  // only for testing purposes
       .cache()
 
     // Show some informations about the dataset
@@ -104,7 +124,7 @@ object preprocessing {
   private [preprocessing] def saveDFonFile(filename: String, dataframe: sql.DataFrame): Unit = {
     val columns = dataframe.columns.toVector
     val rdd1 = dataframe.rdd
-    val file1 = clustering_pkg_path + "/" + filename
+    val file1 = resources_pkg_path + "/" + filename
     writeToCSV(file1, rdd1, columns)
   }
 
@@ -134,7 +154,7 @@ object preprocessing {
    * @param stategy the type of measure used to impute missing values, e.g. "mean", "median", ...
    * @return dataframe with imputed values
    */
-  def imputeMissingValues(dataframe: sql.DataFrame, columns: Array[String], stategy: String): sql.DataFrame = {
+  private [preprocessing] def imputeMissingValues(dataframe: sql.DataFrame, columns: Array[String], stategy: String): sql.DataFrame = {
     val imputer = new Imputer()
       .setInputCols(columns)
       .setOutputCols(columns)
@@ -148,6 +168,42 @@ object preprocessing {
     println("Num of null values for col 0 after imputing:" + df_imputed.filter(df_imputed(columns(0)).isNull).count())
 
     df_imputed
+  }
+
+  /**
+   * This function standardizes the data in the dataframe given as input and saves a first file,
+   * then on the same dataframe applyse log scaling and standardization and saves the restuls in a secon file.
+   * @param dataframe sql.Dataframe to be transformed
+   * @param file_standardized_data csv filename in which the standardized dataframe will be saved
+   * @param file_log_scaled_data csv filename in which the log scaled dataframe will be saved
+   * @param spark SparkSession
+   */
+  private [preprocessing] def scale_and_save_results(dataframe: sql.DataFrame, file_standardized_data: String,
+                                                     file_log_scaled_data: String, spark: SparkSession): Unit = {
+    // 10. feature scaling: select recency, frequency and monetary value then standardize the data
+    println("FEATURE SCALING")
+    val df_scaled = scaleDataframe(dataframe.columns, dataframe, spark)
+    //    println("DF scaled")
+    //    df_scaled.show()
+    //    df_scaled.describe().show()
+
+    // 11. save the resulting df on a file
+    saveDFonFile(file_standardized_data, df_scaled)
+
+    // 12. apply also the log scaling, to df of step 9, remember before to add 1 to each element of the dataset
+    val df_log = logScaling(dataframe, spark)
+    //    println("Log scaled data")
+    //    df_log.show()
+    //    df_log.describe().show()
+
+    // 13. standardize the log scaled data
+    val df_log_scaled = scaleDataframe(df_log.columns, df_log, spark)
+    //    println("df log scaled results")
+    //    df_log_scaled.show()
+    //    df_log_scaled.describe().show()
+
+    // 14. save results on a file
+    saveDFonFile(file_log_scaled_data, df_log_scaled)
   }
 
   //TODO modificare i nomi dei file che contengono i risultati
@@ -170,34 +226,35 @@ object preprocessing {
 
     // 1. remove duplicate values
     val df_drop = df.dropDuplicates()
-    println("DF after removing duplicates")
-    df_drop.describe().show()
+//    println("DF after removing duplicates")
+//    df_drop.describe().show()
 
     // 2. remove rows where customer id is null
     val df_notnull = df_drop.filter(df_drop("Customer ID").isNotNull)
-    println("DF after null entries delete")
-    df_notnull.describe().show()
+//    println("DF after null entries delete")
+//    df_notnull.describe().show()
 
     // 3. remove quantities with negative values
     val df_notneg = df_notnull.filter(df_notnull("Quantity") > 0)
-    println("DF after filtering rows with negative values")
+//    println("DF after filtering rows with negative values")
+//    df_notneg.describe().show()
 
     // 4. remove useless columns: stockcode, description, country
     val df_removecol = df_notneg.drop("StockCode", "Description", "Country")
-    println("DF after columns drop")
-    df_removecol.describe().show()
+//    println("DF after columns drop")
+//    df_removecol.describe().show()
 
     // 5. feature generation: total price = quantity * price
     val df_newfeatures = df_removecol.withColumn("Amount",
       df_removecol.col("Price") * df_removecol.col("Quantity"))
-    println("DF with Amount column")
-    df_newfeatures.describe().show()
+//    println("DF with Amount column")
+//    df_newfeatures.describe().show()
 
-    // 6. deal with datatime.
+    // 6. convert InvoiceDate to timestamp format
     val df_time = df_newfeatures.withColumn("InvoiceDate",
-      col("InvoiceDate").cast(TimestampType)).cache()
-    println("DF change type of InvoiceDate column")
-    df_time.printSchema()
+      col("InvoiceDate").cast(TimestampType))
+//    println("DF change type of InvoiceDate column")
+//    df_time.printSchema()
 
     // 7. compute recency:
     //    reference date = max invoice date + 1;
@@ -212,20 +269,20 @@ object preprocessing {
     // compute the reference date
     val reference_date_df = df_time.agg(max(df_time.col("InvoiceDate")).as("MaxInvoiceDate"))
       .withColumn("1_day_after", $"MaxInvoiceDate".cast("timestamp") + expr("INTERVAL 24 HOURS"))
-    println("DF compute recency")
-    reference_date_df.show()
-    reference_date_df.printSchema()
+//    println("DF compute recency")
+//    reference_date_df.show()
+//    reference_date_df.printSchema()
 
 //    val reference_date = reference_date_df.head().getTimestamp(1)
 //    println("Reference date timestamp: "+reference_date)
 
     val reference_date_df_long = reference_date_df.withColumn("1_day_after",
       reference_date_df.col("1_day_after").cast(LongType))
-    reference_date_df_long.printSchema()
+//    reference_date_df_long.printSchema()
 
     val reference_date_long = reference_date_df_long.head().getLong(1)
     println("Reference date timestamp long: "+reference_date_long)
-    reference_date_df_long.show()
+//    reference_date_df_long.show()
 
     val df_days = df_time.withColumn("days_since_the_last_purchase",
       abs(df_time.col("InvoiceDate").cast(LongType) - reference_date_long) / (24*3600) ).cache()
@@ -246,9 +303,9 @@ object preprocessing {
       .groupBy("Customer ID")
       .agg(min("days_since_the_last_purchase").as("Recency"),
         sum("Amount").as("MonetaryValue"))
-    println("RECENCY AND MONETARY DF")
-    df_recency_and_monetary.show()
-    df_recency_and_monetary.describe().show()
+//    println("RECENCY AND MONETARY DF")
+//    df_recency_and_monetary.show()
+//    df_recency_and_monetary.describe().show()
 
     // 8. compute frequency: group by user and invoice number, then count the number of elements
     // then again group by for rhe customer id
@@ -257,9 +314,9 @@ object preprocessing {
       .groupBy("Customer ID", "Invoice")
       .agg(count("*").as("Num")))
       .groupBy("Customer ID").agg(count(lit(1)).as("Frequency"))
-    println("FREQUEncy df show")
-    df_frequency.show()
-    df_frequency.describe().show()
+//    println("DF frequency df show")
+//    df_frequency.show()
+//    df_frequency.describe().show()
 
     // 9. compute monetary value: group by user id and sum the total amount spent in each transaction
     //    println("DF compute monetary value")
@@ -273,93 +330,62 @@ object preprocessing {
     // 10. merge dataframes
     //val merged_cols = df_recency_and_monetary.columns.toSet ++ df_frequency.columns.toSet
     var df_rfm = df_recency_and_monetary.join(df_frequency,
-      df_recency_and_monetary.col("Customer ID") === df_frequency.col("Customer ID"),
+      Seq("Customer ID"),
       "inner") // inner join: where keys don’t match the rows get dropped from both datasets
       .cache()
     df_rfm = df_rfm.drop("Customer ID").cache()
-    println("Merging results")
-    df_rfm.show()
-    df_rfm.describe().show()
+//    println("Merging results")
+//    df_rfm.show()
+//    df_rfm.describe().show()
 
-    // 10. feature scaling: select recency, frequency and monetary value then standardize the data
-    println("FEATURE SCALING")
-    val df_scaled = scaleDataframe(df_rfm.columns, df_rfm, spark)
+    // 10. feature scaling by standardization and log scaling + saving results
+    scale_and_save_results(df_rfm, "onlineretail_data_scaled.csv",
+      "onlineretail_data_log_scaled.csv", spark)
 
-//    def extr(x: Any, position: Int)= {
-//      val el = x.getClass.getDeclaredMethod("toArray").invoke(x)
-//      val array = el.asInstanceOf[Array[Double]]
-//      array(position)
-//    }
-//    val RecencyExtractor = udf {
-//      (x: Any) => {
-//        extr(x, 0)
-//      }
-//    }
-//    val FrequencyExtractor = udf {
-//      (x: Any) => {
-//        extr(x, 2)
-//      }
-//    }
-//    val MonetaryExtractor = udf {
-//      (x: Any) => {
-//        extr(x, 1)
-//      }
-//    }
+  }
 
+  def compute_instacart_additional_features(df: sql.DataFrame, df_rfm: sql.DataFrame, spark: SparkSession): Unit = {
+    val df_peak = df.withColumn("order_on_peak",
+      when(df.col("order_dow") <= 1,1).otherwise(0))
 
-//    val df_new = scaledData.withColumn("Recency", RecencyExtractor(scaledData.col("scaledFeatures")))
-//      .withColumn("Frequency", FrequencyExtractor(scaledData.col("scaledFeatures")))
-//      .withColumn("MonetaryValue", MonetaryExtractor(scaledData.col("scaledFeatures")))
-//    scaledData.createOrReplaceGlobalTempView("SCALEDDATA")
-//    val df_new = spark.sql(s"SELECT array_position(scaledFeatures, 0) as Recency, " +
-//      s"array_position(scaledFeatures, 2)  as Frequency, " +
-//      s"array_position(scaledFeatures, 1)  as MonetaryValue FROM global_temp.SCALEDDATA")
+    // 1.
+    val df_preakday_rate = df_peak.groupBy("user_id")
+      .agg( round(mean("order_on_peak").as("avg_order_on_peak"), 2).as("avg_order_on_peak") )
+      .select("user_id", "avg_order_on_peak")
 
-    println("DF scaled")
-    df_scaled.show()
-    df_scaled.describe().show()
+    // 2.
+    val df_med_hour = df_peak.groupBy("user_id")
+      .agg( round(mean("order_hour_of_day").as("avg_order_hour_of_day"), 2).as("avg_order_hour_of_day") )
+      .select("user_id", "avg_order_hour_of_day")
 
+    // 3.
+    val df_peak_time = df.withColumn("peak_time",
+      when(  (df.col("order_hour_of_day") >= 10) && (df.col("order_hour_of_day") <= 16) ,1)
+        .otherwise(0))
+    val df_peak_time_rate = df_peak_time.groupBy("user_id")
+      .agg(  round(mean("peak_time").as("avg_peak_time_rate"), 2).as("avg_peak_time_rate") )
+      .select("user_id", "avg_peak_time_rate")
 
-//    val columns = df_rfm.columns.toVector
-//    val rdd_rfma = df_rfm.rdd
-//    println("PROVA RFM AAAA")
-//    rdd_rfma.foreach(x => println(x.toSeq.mkString(" ")))
-//    val rdd_rfm = df_rfm.select(array(df_rfm.columns.map(col(_)) : _*)).rdd
-//      .map(x => Vectors.dense(x.getSeq[Double](0).toArray))
-//    println("RFF RFM")
-//    rdd_rfm.collect().foreach(x => println(x.toArray.mkString(" ")))
-//    val scaler1 = new StandardScaler(withMean = true, withStd = true).fit(rdd_rfm)
-//    val rdd1 = scaler1.transform(rdd_rfm)
-////    val rdd_row = rdd1.map(x => Row.fromSeq(x.toArray))
-////    val d = rdd_row.toDF()
-//    rdd1.collect().foreach(x => println(x.toArray.mkString(" ")))
+    // merge
+    val df_joined1 = df_preakday_rate.join(df_med_hour,
+      Seq("user_id"),
+      "inner") // inner join: where keys don’t match the rows get dropped from both datasets
 
-    // 11. save the resulting df on a file
-    saveDFonFile("data_scaled.csv", df_scaled)
+    val df_joined2 = df_joined1.join(df_peak_time_rate,
+      Seq("user_id"),
+      "inner")
 
+    val df_joined3 = df_joined2.join(df_rfm,
+      Seq("user_id"),
+      "inner")
+      //.cache()
 
-    // 12. apply also the log scaling, to df of step 9, remember before to add 1 to each element of the dataset
-    val df_log = logScaling(df_rfm, spark)
-    println("Log scaled data")
-    df_log.show()
-    df_log.describe().show()
+    val df_final = df_joined3.drop("user_id").cache()
 
-//    df_tmp.createOrReplaceGlobalTempView("RFM")
-//    val df_tmp2 = spark.sql(s"SELECT log(2, Recency) as Recency, " +
-//      "log(2, Frequency) as Frequency, " +
-//      "log(2, MonetaryValue) as MonetaryValue FROM global_temp.RFM")
-//    println("Log scaled data 2")
-//    df_tmp2.show()
-//    df_tmp2.describe().show()
+    // 10. feature scaling by standardization and log scaling + saving results
+    scale_and_save_results(df_final, "instacart_data_scaled_6features.csv",
+      "instacart_data_log_scaled_6features.csv", spark)
 
-    // 13. standardize the log scaled data
-    val df_log_scaled = scaleDataframe(df_log.columns, df_log, spark)
-    println("df log scaled results")
-    df_log_scaled.show()
-    df_log_scaled.describe().show()
-
-    // 14. save results on a file
-    saveDFonFile("data_log_scaled.csv", df_log_scaled)
   }
 
   /**
@@ -371,21 +397,31 @@ object preprocessing {
    * @param spark
    * @param sqlContext
    */
-  def run_preprocessing_instacart_dataset(spark: SparkSession, sqlContext: SQLContext) ={
+  def run_preprocessing_instacart_dataset(spark: SparkSession, sqlContext: SQLContext): Unit ={
 
     import spark.implicits._
 
     // 0. read data from file
     var df = loadDFandPrintInfo(spark, dataset_path + "/Instacart/orders.csv", hasHeader = true, "user_id")
-    val order_products_train_df = loadDFandPrintInfo(spark,
+    var order_products_train_df = loadDFandPrintInfo(spark,
+      dataset_path + "/Instacart/order_products__train.csv", hasHeader = true, "product_id")
+    var order_products_prior_df = loadDFandPrintInfo(spark,
       dataset_path + "/Instacart/order_products__prior.csv", hasHeader = true, "product_id")
-    val order_products_prior_df = loadDFandPrintInfo(spark,
-      dataset_path + "/Instacart/order_products__prior.csv", hasHeader = true, "product_id")
+
+    order_products_train_df = order_products_train_df.select("order_id", "add_to_cart_order")
+      .withColumn("add_to_cart_order", col("add_to_cart_order").cast(DoubleType))
+      .withColumn("order_id", col("order_id").cast(DoubleType))
+
+    order_products_prior_df = order_products_prior_df.select("order_id", "add_to_cart_order")
+      .withColumn("add_to_cart_order", col("add_to_cart_order").cast(DoubleType))
+      .withColumn("order_id", col("order_id").cast(DoubleType))
 
     // 1. cast column type
     df = df.withColumn("days_since_prior_order", col("days_since_prior_order").cast(DoubleType))
-//      .withColumn("user_id",col("user_id").cast(DoubleType))
-//      .withColumn("order_id",col("order_id").cast(DoubleType))
+      .withColumn("user_id",col("user_id").cast(DoubleType))
+      .withColumn("order_id",col("order_id").cast(DoubleType))
+      .withColumn("order_dow",col("order_dow").cast(DoubleType))
+      .withColumn("order_hour_of_day",col("order_hour_of_day").cast(DoubleType))
 
     // 2. remove duplicate values
     val df_drop = df.dropDuplicates()
@@ -404,7 +440,6 @@ object preprocessing {
     val df_removecol = df_imputed1.drop("eval_set").cache()
     println("DF after columns drop")
     df_removecol.describe().show()
-
 
     // 6. compute recency: we do not have the information abount the number of days since the last order,
     // so we will use the average number of days between two orders of the same customer
@@ -460,7 +495,7 @@ object preprocessing {
     println("show order details")
     orders_details_df.show()
 
-    var df_joined = df_removecol.join(orders_details_df,
+    val df_joined = df_removecol.join(orders_details_df,
       Seq("order_id"),
       "inner") // inner join: where keys don’t match the rows get dropped from both datasets
       .cache()
@@ -500,38 +535,147 @@ object preprocessing {
     df_rf.describe().show()
 
     var df_rfm = df_rf.join(df_monetary,
-      df_rf.col("user_id") === df_monetary.col("user_id"),
+      Seq("user_id"),
       "inner") // inner join: where keys don’t match the rows get dropped from both datasets
       .cache()
+
+    //TODO uncomment to compute all the six features
+//    compute_instacart_additional_features(df_removecol, df_rfm, spark)
+
+
     df_rfm = df_rfm.drop("user_id").cache()
     println("Merging results")
     df_rfm.show()
     df_rfm.describe().show()
 
-    // 10. feature scaling: select recency, frequency and monetary value then standardize the data
-//    println("FEATURE SCALING")
-    val df_scaled = scaleDataframe(df_rfm.columns, df_rfm, spark)
-    println("DF scaled")
-    df_scaled.show()
-    df_scaled.describe().show()
+    // 10. feature scaling by standardization and log scaling + saving results
+    scale_and_save_results(df_rfm, "instacart_data_scaled.csv",
+      "instacart_data_log_scaled.csv", spark)
 
-    // 11. save the resulting df on a file
-    saveDFonFile("data_scaled.csv", df_scaled)
+  }
 
-    // 12. apply also the log scaling, to df of step 9, remember before to add 1 to each element of the dataset
-    val df_log = logScaling(df_rfm, spark)
-    println("Log scaled data")
-    df_log.show()
-    df_log.describe().show()
 
-    // 13. standardize the log scaled data
-    val df_log_scaled = scaleDataframe(df_log.columns, df_log, spark)
-    println("df log scaled results")
-    df_log_scaled.show()
-    df_log_scaled.describe().show()
+  /**
+   * Data preprocessing pipeline for the Multi Category Shop Dataset.
+   * All the needed preprocessing steps are applied in this function: data cleaning, feature generation,
+   * data transformation, ...
+   * At the end the standardized dataset is saved in the file multicatshop_data_scaled.csv
+   * and the log scaled dataset is saved in the file multicatshop_data_log_scaled.csv
+   * @param spark
+   * @param sqlContext
+   */
+  def run_preprocessing_multicatshop_dataset(spark: SparkSession, sqlContext: SQLContext) ={
 
-    // 14. save results on a file
-    saveDFonFile("data_log_scaled.csv", df_log_scaled)
+    import spark.implicits._
+
+    // 0. read data from file
+
+    @tailrec
+    def loadDfFromList(filelist: Vector[String], df: sql.DataFrame): sql.DataFrame = {
+      if(filelist.isEmpty) df
+      else {
+        val file = filelist.head
+        val df_tmp = loadDFandPrintInfo(spark, dataset_path + file,
+          hasHeader = true, "user_id")
+        // recursive call
+        println("filelist slice:")
+        filelist.foreach(println)
+        if(df.isEmpty) loadDfFromList(filelist.slice(1, filelist.length), df_tmp)
+        else loadDfFromList(filelist.slice(1, filelist.length), df.union(df_tmp))
+      }
+    }
+
+    val filelist = Vector(
+      "/Cosmetic_Shop/archive_complete/2019-Oct.csv",
+      "/Cosmetic_Shop/archive_complete/2019-Nov.csv",
+      "/Cosmetic_Shop/archive_complete/2019-Dec.csv",
+      "/Cosmetic_Shop/archive_complete/2020-Jan.csv",
+      "/Cosmetic_Shop/archive_complete/2020-Feb.csv",
+      "/Cosmetic_Shop/archive_complete/2020-Mar.csv",
+      "/Cosmetic_Shop/archive_complete/2020-Apr.csv"
+    )
+    val df = loadDfFromList(filelist, spark.emptyDataFrame)
+
+//    val df_oct = loadDFandPrintInfo(spark, dataset_path + "/Cosmetic_Shop/archive_complete/2019-Oct.csv",
+//      hasHeader = true, "user_id")
+//    val df_nov = loadDFandPrintInfo(spark, dataset_path + "/Cosmetic_Shop/archive_complete/2019-Nov.csv",
+//      hasHeader = true, "user_id")
+//
+//    // 1. union of the two dataframes
+//    val df = df_oct.union(df_nov)
+    println("Dataframe details")
+    df.show()
+    df.describe().show()
+
+    // 2. filter the data
+    val purchasedata = df.filter(df.col("event_type").contains("purchase"))
+    println("purchase data show")
+    purchasedata.show()
+    purchasedata.describe().show()
+
+    // 3. remove duplicate values
+    val df_drop = purchasedata.dropDuplicates()
+    println("DF after removing duplicates")
+    df_drop.describe().show()
+
+    // 3. remove rows where user id is null
+    val df_notnull = df_drop.filter(df_drop("user_id").isNotNull)
+    println("DF after null entries delete")
+    df_notnull.describe().show()
+
+    // 4. removing samples with negative price
+    val df_notneg = df_notnull.filter(df_notnull("price") > 0)
+    println("DF after filtering rows with negative values")
+    df_notneg.describe().show()
+
+    // 5. remove useless columns: eval_set
+    val df_removecol = df_notneg.drop("category_code", "brand", "product_id", "category_id", "user_session")
+    println("DF after columns drop")
+    df_removecol.describe().show()
+
+    // 6. convert event_time to date format
+    val df_time = df_removecol.withColumn("event_time", col("event_time").cast(TimestampType))
+      .withColumn("price", col("price").cast(DoubleType))
+      .cache()
+    println("DF change type of event_time column")
+    df_time.printSchema()
+
+    // 8. compute recency frequency and monetary value
+    // compute the reference date
+    val reference_date_df = df_time.agg(max(df_time.col("event_time")).as("MaxEventTime"))
+      .withColumn("1_day_after", $"MaxEventTime".cast("timestamp") + expr("INTERVAL 24 HOURS"))
+    println("DF compute reference date")
+    reference_date_df.show()
+    reference_date_df.printSchema()
+
+    //    val reference_date = reference_date_df.head().getTimestamp(1)
+    //    println("Reference date timestamp: "+reference_date)
+
+    val reference_date_df_long = reference_date_df.withColumn("1_day_after",
+      reference_date_df.col("1_day_after").cast(LongType))
+    reference_date_df_long.printSchema()
+
+    val reference_date_long = reference_date_df_long.head().getLong(1)
+    println("Reference date timestamp long: "+reference_date_long)
+    reference_date_df_long.show()
+
+    val df_days = df_time.withColumn("days_since_the_last_purchase",
+      abs(df_time.col("event_time").cast(LongType) - reference_date_long) / (24*3600) ).cache()
+
+    val df_rfm = df_days.select("user_id", "days_since_the_last_purchase", "price", "event_type")
+      .groupBy("user_id")
+      .agg(min("days_since_the_last_purchase").as("Recency"),
+        sum("price").as("MonetaryValue"),
+        count("event_type").as("Frequency"))
+      .drop("user_id")
+      .cache()
+    println("RECENCY - MONETARY - FREQUENCY DF")
+    df_rfm.show()
+    df_rfm.describe().show()
+
+    // 9. feature scaling by standardization and log scaling + saving results
+    scale_and_save_results(df_rfm, "multicatshop_data_scaled.csv",
+      "multicatshop_data_log_scaled.csv", spark)
 
   }
 
@@ -539,28 +683,26 @@ object preprocessing {
 
     // start spark session, it contains the spark context
     val spark : SparkSession = SparkSession.builder()
-      .appName("KMeans")
+      .appName("Customer Segmentation Preprocessing")
       .master("local[*]")
       .getOrCreate()
 
     val sqlContext = spark.sqlContext
     import sqlContext.implicits._
 
-
-    // using spark session we do not need the spark context anymore
-    //    val conf = new SparkConf().setAppName("KMeans").setMaster("local[*]")
-    //    val sc = new SparkContext(conf)
     val rootLogger = mylogger.getRootLogger()
     rootLogger.setLevel(Level.ERROR)
 
+    // 1 - Online Retail dataset
 //    println(time(run_preprocessing_onlineretail_dataset(spark, sqlContext)))
 
-    //TODO generalization of the prerpocessing finction
-
-
-    //TODO build preprocessing for the other two datasets
-
+    // 2 - Instacart dataset
     println(time(run_preprocessing_instacart_dataset(spark, sqlContext)))
+
+    // 3 - Multi Category Shop dataset
+//    println(time(run_preprocessing_multicatshop_dataset(spark, sqlContext)))
+
+
   }
 
 }
