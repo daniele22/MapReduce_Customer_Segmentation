@@ -37,7 +37,7 @@ object NumberOfPointsWithinDistanceDriver extends Serializable {
         "Histogram of number of points within " + distance + " from each point",
         jars = Array(argsParser.args.jar))
 
-      val data = IOHelper.readDataset(sc, argsParser.args.inputPath, false)
+      val (columns, data) = IOHelper.readDataset(sc, argsParser.args.inputPath, false)
 
       val settings = new DbscanSettings()
         .withEpsilon(distance)

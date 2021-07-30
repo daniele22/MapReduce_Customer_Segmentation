@@ -53,7 +53,7 @@ object DbscanDriver extends Serializable {
 
       val sc = new SparkContext(conf)
 
-      val data = IOHelper.readDataset(sc, argsParser.args.inputPath, false)
+      val (columns, data) = IOHelper.readDataset(sc, argsParser.args.inputPath, false)
       val settings = new DbscanSettings ()
         .withEpsilon(argsParser.args.eps)
         .withNumberOfPoints(argsParser.args.minPts)

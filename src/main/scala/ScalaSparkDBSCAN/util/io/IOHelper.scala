@@ -20,21 +20,24 @@ object IOHelper extends Serializable{
     * @param path A path to the CSV file
     * @return A [[ScalaSparkDBSCAN.dbscan.RawDataSet]] populated with points
     */
-  def readDataset (sc: SparkContext, path: String, hasHeader: Boolean): RawDataSet = {
+  def readDataset (sc: SparkContext, path: String, hasHeader: Boolean): (Array[String], RawDataSet) = {
     var rawData = sc.textFile (path)
 
     // if the csv file contains an header remove it
     val hasHeader = true
+    var columns: Array[String] = Array()
     if(hasHeader){
       val header = rawData.first() // extract the header
+      columns = header.split(",")
       rawData = rawData.filter(row => row != header)  // filter out reader
     }
 
-    rawData.map (
+    val data = rawData.map (
       line => {
         new Point (line.split(separator).map( _.toDouble ))
       }
     )
+    (columns, data)
   }
 
   /** Saves clustering result into a CSV file. The resulting file will contain the same data as the input file,

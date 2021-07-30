@@ -32,7 +32,7 @@ object DistanceToNearestNeighborDriver extends DistanceCalculation with Serializ
         "Estimation of distance to the nearest neighbor",
         jars = Array(argsParser.args.jar))
 
-      val data = IOHelper.readDataset(sc, argsParser.args.inputPath, hasHeader = false)
+      val (columns, data) = IOHelper.readDataset(sc, argsParser.args.inputPath, hasHeader = false)
       val settings = new DbscanSettings().withDistanceMeasure(argsParser.args.distanceMeasure)
       val partitioningSettings = new PartitioningSettings(numberOfPointsInBox = argsParser.args.numberOfPoints)
       

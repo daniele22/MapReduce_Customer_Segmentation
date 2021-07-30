@@ -206,7 +206,6 @@ object preprocessing {
     saveDFonFile(file_log_scaled_data, df_log_scaled)
   }
 
-  //TODO modificare i nomi dei file che contengono i risultati
   /**
    * Data preprocessing pipeline for the Online Retail Dataset.
    * All the needed preprocessing steps are applied in this function: data cleaning, feature generation,
@@ -694,13 +693,16 @@ object preprocessing {
     rootLogger.setLevel(Level.ERROR)
 
     // 1 - Online Retail dataset
-//    println(time(run_preprocessing_onlineretail_dataset(spark, sqlContext)))
+    println("Execution of preprocessing on Online Retail Dataset")
+    println(time(run_preprocessing_onlineretail_dataset(spark, sqlContext)))
 
     // 2 - Instacart dataset
+    println("Execution of preprocessing on Instacart Dataset")
     println(time(run_preprocessing_instacart_dataset(spark, sqlContext)))
 
     // 3 - Multi Category Shop dataset
-//    println(time(run_preprocessing_multicatshop_dataset(spark, sqlContext)))
+    println("Execution of preprocessing on Multi Category Shop Dataset")
+    println(time(run_preprocessing_multicatshop_dataset(spark, sqlContext)))
 
 
   }

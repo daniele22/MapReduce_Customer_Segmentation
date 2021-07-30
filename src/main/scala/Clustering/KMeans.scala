@@ -19,8 +19,10 @@ package Clustering
 
 import java.io._
 
+import DataPreprocessing.postprocessing.computeSummary
 import Utils.Const._
-import Clustering.Plot.{saveLinePlot, savePairPlot}
+import Utils.Plot.{saveElbowLinePlot, savePairPlot}
+import Utils.common.{getRunningTime, time, writeListToTxt, writeResToCSV}
 import com.esotericsoftware.minlog.Log.Logger
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
@@ -29,7 +31,7 @@ import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.json4s.scalap.scalasig.ClassFileParser.header
 
 import scala.util.Random
-import myparallel.primitives._
+import Utils.common._
 import org.apache.log4j.{Logger => mylogger}
 import org.apache.log4j.Level
 import org.apache.spark
@@ -45,26 +47,7 @@ import org.apache.spark.sql.types._
 
 object KMeans extends java.io.Serializable{
 
-  final val spark: SparkSession = SparkSession.builder()
-    .master("local[*]")
-    .appName("KMeans")
-    .getOrCreate()
-
-
-  val epsilon = 0.0001
-//  val numK = 4 // clusters number
-//  val randomX = new Random
-//  val randomY = new Random
-//  val maxCoordinate = 100.0
-
-
-
-  // compute the distance between two points
-  //  def distance(p1: (Double, Double), p2: (Double, Double)) =
-  //    math.sqrt(
-  //      math.pow(p2._1-p1._1, 2) +
-  //        math.pow(p2._2-p1._2, 2)
-  //    )
+  val maxIterations = 250
 
   /**
    * Compute the euclidean distance between two points. The points are represented through
@@ -73,14 +56,21 @@ object KMeans extends java.io.Serializable{
    * @param p2 vector of coordinates of the second point
    * @return
    */
-  def euclideanDistance(p1: Vector[Double], p2: Vector[Double]): Double = {
+  private [KMeans] def euclideanDistance(p1: Vector[Double], p2: Vector[Double]): Double = {
     math.sqrt((p1 zip p2).map{
       case (elem1, elem2) => math.pow(elem2 - elem1, 2)  // without case it does not work because the compiler is not able to type the variables elem1 and elem2
       case _ => throw new Exception("Error in euclidean distance calculation.")
     }.sum)
   }
 
-  def squaredDistance(p1: Vector[Double], p2: Vector[Double]): Double = {
+  /**
+   * Compute the squared distance between two points. The points are represented through
+   * vectors, each element of the vector represent a specific dimension
+   * @param p1 vector of coordinates of the first point
+   * @param p2 vector of coordinates of the second point
+   * @return
+   */
+  private [KMeans] def squaredDistance(p1: Vector[Double], p2: Vector[Double]): Double = {
     (p1 zip p2).map{
       case (elem1, elem2) => math.pow(elem2 - elem1, 2)  // without case it does not work because the compiler is not able to type the variables elem1 and elem2
       case _ => throw new Exception("Error in squared distance calculation.")
@@ -93,7 +83,7 @@ object KMeans extends java.io.Serializable{
    * @param centroids list of all centroids coordinates
    * @return the index of the nearest centroid
    */
-  def findClosest(p: Vector[Double],
+  private [KMeans] def findClosest(p: Vector[Double],
                   centroids: Array[(Int, Vector[Double])]): Int =
     centroids.map(c => (c._1, euclideanDistance(c._2, p))). // calculate the distance between p and each one of the centroids
       minBy(_._2)._1 // take the centroid with the smallest euclidean distance and return its number
@@ -106,7 +96,7 @@ object KMeans extends java.io.Serializable{
    * @param p2_weight weight associated to the second point
    * @return the weighted mean of that specific attribute
    */
-  def weightedMean(p1_attribute: Double, p1_weight: Double, p2_attribute: Double, p2_weight: Double): Double = {
+  private [KMeans] def weightedMean(p1_attribute: Double, p1_weight: Double, p2_attribute: Double, p2_weight: Double): Double = {
     1.0/(1.0+p2_weight/p1_weight)*p1_attribute + 1.0/(1.0+p1_weight/p2_weight)*p2_attribute
   }
 
@@ -122,7 +112,7 @@ object KMeans extends java.io.Serializable{
    * @return a couple that contains the vector of coordinates of the mean point and the new weight that will be
    *         the sum of the weights of p1 and p2
    */
-  def weightedMeanPoint(p1: (Vector[Double], Double),
+  private [KMeans] def weightedMeanPoint(p1: (Vector[Double], Double),
                         p2: (Vector[Double], Double)): (Vector[Double], Double) = {
     (
       // this is the first element of the couple, it's the mean point between p1 and p2
@@ -142,7 +132,7 @@ object KMeans extends java.io.Serializable{
    * @param new_centroids list of new centroids computed
    * @return
    */
-  def meanDistance(old_centroids: Array[(Int, Vector[Double])],
+  private [KMeans] def meanDistance(old_centroids: Array[(Int, Vector[Double])],
                    new_centroids: Array[(Int, Vector[Double])]): Double =
     ((old_centroids zip new_centroids).
       map (c => euclideanDistance(c._1._2, c._2._2)).
@@ -163,23 +153,86 @@ object KMeans extends java.io.Serializable{
     }
   }
 
-
-  private [KMeans] def computeWSS(centroids: Array[(Int, Vector[Double])],
-                                  clustered_points: Array[(Int, Vector[Double])]) = {
+  /**
+   * Compute the WSSSE (Within set sum of squared distance), this is a measure that is used to evaluate the quality
+   * of the clusters. It mesures the dispersion of the points w.r.t. the cluster center
+   * @param centroids list of centroids
+   * @param clustered_points list of points with the cluster assigned to them
+   * @return WSSSE
+   */
+  private [KMeans] def computeWSS(centroids: Array[Vector[Double]],
+                                  clustered_points: Array[(Int, Vector[Double])],
+                                  spark: SparkSession) = {
     // create rdd
     val rdd_points = spark.sparkContext.parallelize(clustered_points)
     // compute WSSSE
-    rdd_points.map(pair => squaredDistance(getCentroid(pair._1, centroids), pair._2)).sum()
+    // pair._1 will be the index of the centroid, we take it from the list and calculate the squaredDistance
+    // between the point and the centroid.
+    rdd_points.map(pair => squaredDistance(centroids(pair._1), pair._2)).sum()
   }
 
-  // the key is the index of the cluster, the value are the point coordinates
+  /**
+   * Take an index and extract the coordinate of that centroid from a list.
+   * This is useful when the list of centroids is not sorted
+   * @param index int id of the centroid
+   * @param centroids list of centroids with their index
+   * @return Centroid rapresented by a vector of coordinates
+   */
   private [KMeans] def getCentroid(index: Int, centroids: Array[(Int, Vector[Double])]): Vector[Double] = {
+    // the key is the index of the cluster, the value are the point coordinates
     val centroid = centroids.find(centroid => centroid._1 == index)
     if(centroid.isEmpty) throw new Exception("Error in finding centroid with id: "+index)
     else centroid.get._2
   }
 
-  def run_kmeans_grouby(input_data_points: RDD[Vector[Double]], numK: Int) = {
+  /**
+   * Runs 10 times the same algorithm and take the average time.
+   * This is done fore different number of clusters (range 2 - 10) and the results are saved on a txt file
+   * @param input_data_points points to be clusterd
+   * @param epsilon threshold value to stop the computation
+   */
+  private [KMeans] def test_computational_time(input_data_points: RDD[Vector[Double]], epsilon: Double): Unit = {
+    val tmp_res = for {
+      num_centroids <- 2 to 10
+      avg_list = for {
+        i <- 0 until 10
+      } yield getRunningTime(run_kmeans_reducebykey(input_data_points, num_centroids, epsilon))
+      mean = avg_list.sum / avg_list.length
+    } yield (num_centroids, mean).toString()
+
+    println("Results:")
+    tmp_res.foreach(println)
+    writeListToTxt("kmeans_running_times_reducebykey_prova.txt", tmp_res)
+  }
+
+  /**
+   * Compute the elbow graph by calculating the WSSSE for each number of clusters
+   * @param start min number of clusters
+   * @param end max number of clusters
+   * @param input_data_points RDD[points]
+   * @param epsilon threshold to stop the computation
+   * @param f kmeans type to execute, e.g. run_reducebykey, run_groupby,...
+   * @param filename png file in which the result will be saved
+   */
+  def computeElbow(start: Int, end: Int, input_data_points: RDD[Vector[Double]], epsilon: Double,
+                   f: (RDD[Vector[Double]], Int, Double) => ( Array[(Int, Vector[Double])],  RDD[(Int, Vector[Double])]),
+                   spark: SparkSession, filename: String = "kmeans_elbow_plot.png") = {
+    // (E) Elbow method to know the best number of clusters
+    val clusters_range = start to end
+    val wss_list = for{
+      num_centroids <- clusters_range
+      // compute kmeans
+      (centroids, clustered_points) = time(f(input_data_points, num_centroids, epsilon))
+      // sort the list of centroids
+      sorted_centroids = centroids.sortBy(centroid => centroid._1).map(centroid => centroid._2)
+      // compute the "error" measure
+      wss = computeWSS(sorted_centroids, clustered_points.collect(), spark)
+    } yield wss
+
+    saveElbowLinePlot(wss_list, clusters_range, filename)
+  }
+
+  def run_kmeans_grouby(input_data_points: RDD[Vector[Double]], numK: Int, epsilon: Double) = {
 
     // Initialize K random centroids, these will have the form of (centroid_number, coordinates: Array[Double])
     // so they are represented as couple, where the first element is an integer and represent the index of the centroid.
@@ -218,7 +271,7 @@ object KMeans extends java.io.Serializable{
         .collect()
       // compare the new centroids with the old ones
       // continue the loop until the change between two iterations is less than a specific threshold
-      if (meanDistance(centroids, newCentroids) < epsilon)
+      if (meanDistance(centroids, newCentroids) < epsilon || numIterations > maxIterations)
         finished = true
       else centroids = newCentroids
       numIterations = numIterations + 1
@@ -228,7 +281,7 @@ object KMeans extends java.io.Serializable{
     //mycentroids.map(println)
     println("Iterations = "+numIterations)
 
-    val clustered_points = input_data_points.map(point => (findClosest(point, centroids), point)).collect()
+    val clustered_points = input_data_points.map(point => (findClosest(point, centroids), point))
     (centroids, clustered_points)
   }
 
@@ -237,7 +290,7 @@ object KMeans extends java.io.Serializable{
   // With this second version also problems related to the memory consumption can be avoided, indeed
   // all the points are aggregated on a single node with groudBy and in the case of millions of date this could be
   // a problem. With reduceByKey we can avoid that phenomenon.
-  def run_kmeans_reducebykey(input_data_points: RDD[Vector[Double]], numK: Int): (Array[(Int, Vector[Double])], Array[(Int, Vector[Double])]) = {
+  def run_kmeans_reducebykey(input_data_points: RDD[Vector[Double]], numK: Int, epsilon: Double) = {
 
     // Initialize K random centroids, these will have the form of (centroid_number, coordinates: Array[Double])
     // so they are represented as couple, where the first element is an integer and represent the index of the centroid.
@@ -270,21 +323,21 @@ object KMeans extends java.io.Serializable{
         .map(c => (c._1,c._2._1))
         .collect()
       // compare the new centroid with the old ones
-      if (meanDistance(centroids,newCentroids) < epsilon)  // check if the update is less than the threshold
+      if (meanDistance(centroids,newCentroids) < epsilon || numIterations > maxIterations)  // check if the update is less than the threshold
         finished = true
       else centroids = newCentroids
       numIterations = numIterations + 1
     } while(!finished)
     println("Final centroid points:")
     printCentroids(centroids)
-    //mycentroids.map(println)
+//    mycentroids.map(println)
     println("Iterations = "+numIterations)
 
-    val clustered_points = input_data_points.map(point => (findClosest(point, centroids), point)).collect()
+    val clustered_points = input_data_points.map(point => (findClosest(point, centroids), point))
     (centroids, clustered_points)
   }
 
-  def run_kmeans_reducebykey_tailrec(input_data_points: RDD[Vector[Double]], numK: Int) = {
+  def run_kmeans_reducebykey_tailrec(input_data_points: RDD[Vector[Double]], numK: Int, epsilon: Double) = {
     // Initialize K random centroids, these will have the form of (centroid_number, coordinates: Array[Double])
     // so they are represented as couple, where the first element is an integer and represent the index of the centroid.
     // Fix a seed to ensure reproducibility!
@@ -320,7 +373,7 @@ object KMeans extends java.io.Serializable{
     def run_tailrec(oldCentroids: Array[(Int, Vector[Double])],
                     centroids: Array[(Int, Vector[Double])],
                     numIterations: Int = 0): Array[(Int, Vector[Double])] = {
-      if (numIterations != 0 && meanDistance(oldCentroids, centroids) < epsilon) {
+      if (numIterations != 0 && (meanDistance(oldCentroids, centroids) < epsilon || numIterations > maxIterations)) {
         println("Iterations = " + numIterations)
         centroids
       }
@@ -339,16 +392,84 @@ object KMeans extends java.io.Serializable{
     println("Final centroid points:")
     printCentroids(resultingCentroids)
 
-    val clustered_points = input_data_points.map(point => (findClosest(point, centroids), point)).collect()
-    (centroids, clustered_points)
+    val clustered_points = input_data_points.map(point => (findClosest(point, resultingCentroids), point))
+    (resultingCentroids, clustered_points)
 
   }
 
 
+  /**
+   * load data of given a specific dataset path and returns an RDD of that data
+   * @param dataset_path filepath
+   * @return a pair (column, RDD) where column are the columns of the dataset and RDD contains the points
+   */
+  def loadData(dataset_path: String, spark: SparkSession) = {
+
+    // () load data from csv file
+    val df = spark.read.format("csv")
+      .option("header", "true")
+      .option("mode", "DROPMALFORMED")
+      .load(dataset_path)
+    val columns = df.columns.toVector
+    val input_data_rdd = df.rdd
+
+    // print the rdd content
+    //input_data_rdd.collect().foreach(println)
+    println("Number of elements: " + input_data_rdd.count())
+
+    // generate tuples
+    val input_data_points = input_data_rdd.map { row =>
+      //creation of an Array[Double] with the i-th row elements
+      val array = row.toSeq.toVector
+      array.map(x => x.toString.toDouble)
+    }.cache()  //.persist(StorageLevel.MEMORY_AND_DISK)
+
+    // print results
+    //input_data_points.collect().foreach(x => println(x.mkString(" ")))
+    println("Input data counts: " + input_data_points.count())
+
+    (columns, input_data_points)
+  }
+
+  /**
+   * Run the K-Means algorithm on a specific dataset and with specific params.
+   * @param dataset_path filepath
+   * @param epsilon threshold to stop the computation
+   * @param numK number of clusters to be computed
+   */
+  def kmeans_naive(dataset_path: String, epsilon: Double, numK: Int, plot_data: Boolean = false, spark: SparkSession) = {
+    // (A) load data
+    val (columns, input_data_points) = loadData(dataset_path, spark)
+
+    // (B) run kmeans algorithm
+    val (centroids, clustered_points_rdd) = time(run_kmeans_reducebykey(input_data_points, numK, epsilon))
+    val clustered_points = clustered_points_rdd.collect()
+
+    // (C) save the results
+//    writeResToCSV("kmeans_naive_clustering_results.csv", clustered_points, columns)
+    if(plot_data)
+      savePairPlot(clustered_points, columns, img_pkg_path+"/kmeans_naive_pairplot.png") //Vector("Recency", "Frequency", "MonetaryValue")
+
+    // (D) compute the error WSSSE (Within set sum of squared errors)
+    val sorted_centroids = centroids.sortBy(centroid => centroid._1).map(centroid => centroid._2)
+    val wss = computeWSS(sorted_centroids, clustered_points, spark)
+    println("Within set sum of squared errors: "+wss)
+
+    computeSummary(columns.toArray, clustered_points_rdd, spark)
+  }
 
   def main(args: Array[String]): Unit = {
 
-    // start spark session, it contains the spark context
+    val spark: SparkSession = SparkSession.builder()
+      .master("local[*]")
+      .appName("KMeans")
+      .config("spark.executor.memory", "70g")
+      .config("spark.driver.memory", "50g")
+      .config("spark.memory.offHeap.enabled",true)
+      .config("spark.memory.offHeap.size","16g")
+      .getOrCreate()
+
+//    // start spark session, it contains the spark context
 //    val spark : SparkSession = SparkSession.builder()
 //      .appName("KMeans")
 //      .master("local[*]")
@@ -363,93 +484,42 @@ object KMeans extends java.io.Serializable{
     val rootLogger = mylogger.getRootLogger()
     rootLogger.setLevel(Level.ERROR)
 
+    // (B) EXECUTION OF THE K-MEANS ALGORITHM
+    val epsilon = 0.0001
+    val numK = 4
+    val (columns, input_data_points) = loadData(instacart_file, spark)
 
-//    val dfWithSchema = spark.read.option("header", "true")
-//      .schema(schema)
-//      .csv(temp_filename)
-//    dfWithSchema.show()
-//
-//    print("SEP")
-//    file.map(_.split("\\s+")).foreach(x => println("element:" + x.toString))
-//    val fileToDf = file.map(_.split(" ")).map{ case Array(a,b) => (a.toString.toDouble, b.toString.toDouble) }.toDF("col1", "col2")
-//    fileToDf.show()
-    //fileToDf.foreach(println(_))
+    println("EXECUTION OF THE FIRST VERSION OF KMEANS (GroupBy version)")
+    val (resultingCentroids1, clustered_points1) = time(run_kmeans_grouby(input_data_points, numK, epsilon))
+    println()
 
-    // () load data from csv file
-    val df = spark.read.format("csv")
-      .option("header", "false")
-      .option("mode", "DROPMALFORMED")
-//      .load(onlineretail_file)
-      .load(inference_filename)
-    val columns = df.columns
-    val input_data_rdd = df.rdd
-    // this print the rdd content
-    //input_data_rdd.collect().foreach(println)
-    println("Number of elements: " + input_data_rdd.count())
-    // generate tuples
-    val input_data_points = input_data_rdd.map { row =>
-      //creation of an Array[Double] with the i-th row elements
-      val array = row.toSeq.toVector
-      array.map(x => x.toString.toDouble)
-    }.cache//.persist(StorageLevel.MEMORY_AND_DISK)
-    // print results
-    //input_data_points.collect().foreach(x => println(x.mkString(" ")))
-    println("Input data counts: " + input_data_points.count())
+    println("EXECUTION OF THE SECOND VERSION OF KMEANS (ReduceByKey version)")
+    val (resultingCentroids2, clustered_points2) = time(run_kmeans_reducebykey(input_data_points, numK, epsilon))
+    println()
 
-    // Default: load txt file made by gen function.
-    //    val input = spark.sparkContext.textFile("C:/Users/hp/IdeaProjects/ScalableCourseExamples/src/main/scala/05_Distributed_Parallel_Programming/kmeans_points.txt")
-    //    val sparkPoints = input.map(s =>
-    //      ( (s.takeWhile(_ != '\t')).toDouble,
-    //        (s.dropWhile(_ != '\t')).toDouble )
-    //    ).cache//.persist(StorageLevel.MEMORY_AND_DISK)
-    //    // prent results
-    //    input.collect().foreach(println)
-    //    println(sparkPoints.count())
+    println("EXECUTION OF THE THIRD VERSION OF KMEANS (Tail Recursive ReduceByKey version)")
+    val (resultingCentroids3, clustered_points3) = time(run_kmeans_reducebykey_tailrec(input_data_points, numK, epsilon))
+    println()
 
-    //    val rddFromFile = sc.textFile(filename)
-    //    val myrdd = sc.textFile(filename)
-    //      .map(line => line.split(","))
-    //      .filter(line => line.length <= 1)
-    //      .collect()
-    //    val rdd = rddFromFile.map(f => {f.split(",")})
-    //    rdd.foreach(f=>{
-    //      println("Col1:"+f(0)+",Col2:"+f(1))
-    //    })
+    // (C) save the results
+    println("Saving pairplot....")
+    savePairPlot(clustered_points1.collect(), columns, //Vector("Recency", "Frequency", "MonetaryValue")
+      img_pkg_path+"/kmeans_pairplot1.png")
 
+    // (D) compute the error WSSSE (Within set sum of squared errors)
+    println("Computing WSSSE.....")
+    val wss = computeWSS(resultingCentroids1.map(elem => elem._2), clustered_points1.collect(), spark)
+    println("Within set sum of squared errors: "+wss)
 
+    // (E) Elbow method computation
+    println("Computing elbow method....")
+    computeElbow(2, 10, input_data_points, epsilon, run_kmeans_reducebykey, spark)
 
-    // GENERATION OF A FILE WITH SYNTHETIC DATA
-//    genFile(4)
+    println("Test computational time for input data points....")
+    test_computational_time(input_data_points, epsilon)
 
-    // EXECUTION OF THE K-MEANS ALGORITHM
-//    println("EXECUTION OF THE FIRST VERSION OF KMEANS (GroupBy version)")
-//    val (centroids, clustered_points) = time(run_kmeans_grouby(input_data_points)) // versione con groupbykey
-//    println()
-
-//    println("EXECUTION OF THE SECOND VERSION OF KMEANS (ReduceByKey version)")
-//    val (centroids, clustered_points) = time(run_kmeans_reducebykey(input_data_points))  // versione con reducebykey
-//    println()
-
-//    println("EXECUTION OF THE THIRD VERSION OF KMEANS (Tail Recursive ReduceByKey version)")
-//    val (centroids, clustered_points) = time(run_kmeans_reducebykey_tailrec(input_data_points))  // versione con reducebykey
-//    println()
-
-    // save the results
-//    savePairPlot(clustered_points, columns, //Vector("Recency", "Frequency", "MonetaryValue")
-//      img_pkg_path+"/kmeans_pairplot.png")
-
-    //compute the error WSSSE (Within set sum of squared errors)
-//    val wss = computeWSS(centroids, clustered_points)
-//    println("Within set sum of squared errors: "+wss)
-
-    val clusters_range = 2 to 5
-    val wss_list = for{
-      num_centroids <- clusters_range
-      (centroids, clustered_points) = time(run_kmeans_reducebykey(input_data_points, num_centroids))
-      sorted_centroids = centroids.sortBy(centroid => centroid._1) // TODO check the results of this line of code
-      wss = computeWSS(centroids, clustered_points)
-    } yield wss
-
-    saveLinePlot(wss_list, clusters_range)
+    // () Run complete method
+    println("Run complete method.......")
+    kmeans_naive(resources_pkg_path+"/test_points_10million_8cols.csv", 0.0001, 4, false, spark)
   }
 }
