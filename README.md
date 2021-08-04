@@ -115,8 +115,13 @@ For more detail on how to run app on AWS, here is an useful article: [Run a Spar
 You can run in local mode using `spark-submit` from comand line or you can also run specific class using intellij IDE, all the clustering classes have a main with defaut path to some file that can be changed.
 
 
-## 📎 Some links to useful resources
+## Execution results
+The execution of the application will produce a csv file with the clustering results, each rows will contain the coordinates of a point and the cluster id associated to that point (in the case of DBSCAN the cluster id 0 respresents the noise points).
+Moreover, if specified a pair plot will be produced where to each point is assigned a color on the base of the cluster id associated to that point.
+Also, on the console (or in the log file) statistical measures will be shown relating to the different clusters and the different features.
 
+
+## 📎 Some links to useful resources
 
 - Spark Documentation: https://spark.apache.org/docs/latest/
 - Spark MLlinb:https://spark.apache.org/docs/latest/ml-guide.html
