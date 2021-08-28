@@ -46,13 +46,15 @@ See the report to details about the implementation of the algorithms.
 
 ### Files
 this files are inside the clustering folder
+
 **File** | **Description**
 --- | ---
 `KMeans.scala` | implementation of k-means algorithm in scala+spark with different strategies to compare the coputational costs
-`Kmeans||.scala` | implementation of the scalable k-means++ algorithm using the spark library MLlib. By changing some parameters it is also possible to run the standard K-Means
+`Kmeans`<code>&#124;&#124;</code>`.scala` | implementation of the scalable k-means++ algorithm using the spark library MLlib. By changing some parameters it is also possible to run the standard K-Means
 `DBSCAN_Distributed` | execution of the distributed dbscan algorithm based on the ScalaSparkDBSCAN library
 
 Other files
+
 **File** | **Description**
 --- | ---
 `Plot.scala` | contains function to realize some plots using the evilplot scala library
@@ -63,7 +65,7 @@ Other files
 
 
 ### Notebooks
-In the notebook folder there are Jupyter Notebooks that can be used to visualize the data of the different dataset and visualize the results after the computation of the clusters.
+In the notebook folder there are Jupyter Notebooks that can be used to visualize the data of the different datasets and visualize the results after the computation of the clusters.
 In the fist case for the data visualization each notebook is specific to a particular dataset, in the second case it's a general notebook that can be used also with other dataset files.
 
 
@@ -72,7 +74,7 @@ To run this application the main steps are:
 1. Create a bucket on S3
 2. Select the newly created bucket from the S3 console and upload dataset files inside it
 3. Create cluster on EMR choosing software configuration compatible with those of the app
-    - choose the `laurnch mode` "cluster" with it the cluster will not terminate when the computation is finished, insted by choosing "step execution" at the end of a specific job the cluster will terminate automatically
+    - choose the `laurnch mode` "cluster", with it the cluster will not terminate when the computation is finished, insted by choosing "step execution" at the end of a specific job the cluster will terminate automatically
     - choose "Spark" as `application`
     - in the `instance type` option, that determines the EC2 type, choose that is better to you
     - the `Number of instances` option determines the number of EC2 instances to initialize, i.e. the number of nodes of the cluster
@@ -85,7 +87,7 @@ To run this application the main steps are:
     - click `Add rule`
     - select `SSH` in the first column and `Anywhere` in the source column (with this we are able to access to the master machine via SSH from everywhere if we have a private key)
 4. Create a .jar file of the application, through sbt, usign the command `sbt assembly` (important the paths to the datasets files in the application must be equal to those of S3 file loaded)
-5. load the jar file into S3
+5. Upload the .jar file into S3
 6. Login into the master machine through SSH connection (key pairs are needed for this and can be easily created in Aws) 
 7. Download the .jar file from S3 into the master node with the command:  `aws s3 cp <path/to/the/file.jar> .`
 8. By running the command `spark-submit` you can run the application:
@@ -107,6 +109,16 @@ The application arguments accepted are:
 - `--make-plot`: If make or not a pairplot with the results of clustering, this is not recommended for very large datasets as it is extremely expensive. Accepted values "true" and "false"
 - `--file`: file path to test the model on a specific file if you do not want to use one of the default dataset, this file must be in csv format
 
+An example of execution command:
+```
+spark-submit --class Main --master yarn
+    s3://customer-segmentation-bucket/MapReduce_Customer_Segmentation-assembly-0.1.jar
+    --alg-name scalable-kmenas
+    --dataset onlineretail
+    --numK 4
+    --epsilon 0.0001
+    1>output.log 2>error.log
+```
 
 For more detail on how to run app on AWS, here is an useful article: [Run a Spark job within Amazon EMR](https://medium.com/big-data-on-amazon-elastic-mapreduce/run-a-spark-job-within-amazon-emr-in-15-minutes-68b02af1ae16) and the official spark documentation [Submitting Applications](https://spark.apache.org/docs/latest/submitting-applications.html).
 
