@@ -87,7 +87,7 @@ To run this application the main steps are:
     - click `Inbound type` and then `Edit`
     - click `Add rule`
     - select `SSH` in the first column and `Anywhere` in the source column (with this we are able to access to the master machine via SSH from everywhere if we have a private key)
-4. Create a .jar file of the application, through sbt, usign the command `sbt assembly` (important the paths to the datasets files in the application must be equal to those of S3 file loaded)
+4. Create a .jar file of the application, through sbt, usign the command `sbt assembly` (important the paths to the datasets files in the application must be equal to those of S3 file loaded); the .jar file will be created in the `target\<scala-version>` folder
 5. Upload the .jar file into S3
 6. Login into the master machine through SSH connection (key pairs are needed for this and can be easily created in Aws) 
 7. Download the .jar file from S3 into the master node with the command:  `aws s3 cp <path/to/the/file.jar> .`
