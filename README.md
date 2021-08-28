@@ -107,7 +107,7 @@ The application arguments accepted are:
 - `--numK`: Number of clusters to define, this is needed only in case of kmeans algorithm
 - `--epsilon`: This represents the stopping threshold in case of kmeans or the local radius for expanding clusters in dbscan
 - `--minpts`: Minimum number of points to form a cluster, this is needed only for dbscan algorithm
-- `--make-plot`: If make or not a pairplot with the results of clustering, this is not recommended for very large datasets as it is extremely expensive. Accepted values "true" and "false"
+- `--make-plot`: If make or not a pairplot with the results of clustering, this is not recommended for very large datasets as it is extremely expensive. Accepted values "true" and "false". (Note: this does not work when you run the application on a cluster, it works only in local mode)
 - `--file`: file path to test the model on a specific file if you do not want to use one of the default dataset, this file must be in csv format
 
 An example of execution command:
