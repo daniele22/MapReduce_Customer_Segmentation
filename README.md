@@ -3,6 +3,7 @@
 
 The main purpose of the project is to use Machine Learning Clustering algorithms to cluster the customers of an e-commerce site to get insights to how improve the marketing politics. 
 
+<img src="https://user-images.githubusercontent.com/51358466/131212517-8d3de0f7-05bc-4a3d-8805-d2ebb7f2e2f1.jpg" width="550" height="300">
 
 ## Dataset
 Different datasets have been tested:
@@ -120,6 +121,8 @@ spark-submit --class Main --master yarn
     1>output.log 2>error.log
 ```
 
+![emr_console](https://user-images.githubusercontent.com/51358466/131212879-99f261e1-3946-484d-8c9a-2b04354275c1.png)
+
 For more detail on how to run app on AWS, here is an useful article: [Run a Spark job within Amazon EMR](https://medium.com/big-data-on-amazon-elastic-mapreduce/run-a-spark-job-within-amazon-emr-in-15-minutes-68b02af1ae16) and the official spark documentation [Submitting Applications](https://spark.apache.org/docs/latest/submitting-applications.html).
 
 
@@ -132,6 +135,7 @@ The execution of the application will produce a csv file with the clustering res
 Moreover, if specified a pair plot will be produced where to each point is assigned a color on the base of the cluster id associated to that point.
 Also, on the console (or in the log file) statistical measures will be shown relating to the different clusters and the different features.
 
+![emr_console_results](https://user-images.githubusercontent.com/51358466/131212925-8a009c60-2615-4653-8477-4f543801c206.png)
 
 ## 📎 Some links to useful resources
 
