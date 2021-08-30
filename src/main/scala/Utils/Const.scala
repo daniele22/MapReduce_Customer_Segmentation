@@ -20,6 +20,7 @@ object Const {
   val resources_pkg_path: String = base_path
   val img_pkg_path: String = base_path
   val dataset_path: String = "There is no dataset path for s3"
+  val bucket_name: String = "customer-segmentation-bucket"
 
 
 

@@ -139,7 +139,7 @@ object Plot {
       .rightLabels(labels)
       .rightLegend()
       .render()
-      .write(new File(filepath))
+      .write(new File(filepath)) //TODO this does not work on AWS cluster!
 
   }
 

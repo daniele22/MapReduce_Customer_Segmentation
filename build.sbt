@@ -21,6 +21,10 @@ libraryDependencies += "com.github.scopt" %% "scopt" % "4.0.0" % "compile"
 resolvers += Resolver.bintrayRepo("cibotech", "public")
 libraryDependencies += "io.github.cibotech" %% "evilplot" % "0.8.1"
 
+// https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk
+libraryDependencies += "com.amazonaws" % "aws-java-sdk" % "1.11.830"
+
+
 // needed for sbt-assembly
 val meta = """META.INF(.)*""".r
 assemblyMergeStrategy in assembly := {

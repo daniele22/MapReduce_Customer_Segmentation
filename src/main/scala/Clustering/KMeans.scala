@@ -446,7 +446,8 @@ object KMeans extends java.io.Serializable{
     val clustered_points = clustered_points_rdd.collect()
 
     // (C) save the results
-//    writeResToCSV("kmeans_naive_clustering_results.csv", clustered_points, columns)
+//    writeResToCSV("kmeans_naive_clustering_results.csv", clustered_points, columns) // run il local mode
+    writeResToCSV_AWS_S3("kmeans_naive_clustering_results.csv", clustered_points, columns) //run on cluster
     if(plot_data)
       savePairPlot(clustered_points, columns, img_pkg_path+"/kmeans_naive_pairplot.png") //Vector("Recency", "Frequency", "MonetaryValue")
 

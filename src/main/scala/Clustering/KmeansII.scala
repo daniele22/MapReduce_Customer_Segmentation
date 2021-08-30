@@ -189,7 +189,8 @@ object KmeansII {
     val clustered_points = clustered_points_rdd.collect()
 
     // (C) save the results - //Vector("Recency", "Frequency", "MonetaryValue")
-//    writeResToCSV("kmeans_clustering_results.csv", clustered_points, columns.toVector)
+//    writeResToCSV("kmeans_clustering_results.csv", clustered_points, columns.toVector) //run in local mode
+    writeResToCSV_AWS_S3("kmeans_clustering_results.csv", clustered_points, columns.toVector) //run on cluster
     if(plot_data)
       savePairPlot(clustered_points, columns, img_pkg_path+"/kmeans_pairplot.png")
 
@@ -208,7 +209,8 @@ object KmeansII {
     val clustered_points = clustered_points_rdd.collect()
 
     // (C) save the results
-//    writeResToCSV("kmeans_scalable_clustering_results.csv", clustered_points, columns.toVector)
+//    writeResToCSV("kmeans_scalable_clustering_results.csv", clustered_points, columns.toVector) //run in local mode
+    writeResToCSV_AWS_S3("kmeans_scalable_clustering_results.csv", clustered_points, columns.toVector) //run on cluster
     if(plot_data)
       savePairPlot(clustered_points, columns, img_pkg_path+"/kmeans_scalable_pairplot.png") //Vector("Recency", "Frequency", "MonetaryValue")
 

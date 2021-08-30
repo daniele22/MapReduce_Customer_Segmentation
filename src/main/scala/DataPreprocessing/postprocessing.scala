@@ -1,3 +1,11 @@
+/*
+This class contains methods to do the data post processing, i.e. compute statistical measures,
+such as mean, standard deviation, quartiles, ..., for the customers segments returned by the clustering algorithms.
+
+The results are printed on the console.
+
+@author Daniele Filippini
+ */
 package DataPreprocessing
 
 import org.apache.spark.mllib.linalg.Vectors
@@ -10,7 +18,6 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
 
 object postprocessing {
-
 
   /**
    * From a grouby df object provide the stats of describe for each key in the groupby object.

@@ -19,6 +19,9 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SparkSession}
 import org.apache.spark.sql.types.{StringType, StructField, StructType}
 
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
+import com.amazonaws.AmazonServiceException
+
 import scala.annotation.tailrec
 import scala.util.Random
 
@@ -100,18 +103,54 @@ object common {
       p => dataToWrite.foreach(p.println)
     }
   }
-  //  def writeResToCSV(filename: String, data: RDD[(Vector[Double], Int)],
-  //                    column_names: Vector[String] = Vector()): Unit = {
-  //    val elemSize = data.takeSample(false, 1, 42)(0)._1.length
-  //    if(column_names.nonEmpty) assert(column_names.length == elemSize)
-  //
-  //    val dataToWrite = getColNames(column_names) ++
-  //      data.map(x => x._1.mkString(",") + "," + x._2).collect()
-  //    printToFile(filename) {
-  //      p => dataToWrite.foreach(p.println)
-  //      //p => data.map(x => x._1 + "," + x._2).collect().foreach(p.println) }
-  //    }
-  //  }
+
+
+  /**
+   * This function creates a comma separated string starting from column array and the data array.
+   * The string is used by the function writeResToCSV_AWS_S3 to create a new file inside the specified bucket.
+   * @param data array of clustered points
+   * @param column_names array of colum names, this could be empty
+   * @return comma separated string with all the data
+   */
+  private [Utils] def computeS3FileContent(data: Array[(Int, Vector[Double])],
+                           column_names: Vector[String] = Vector()) = {
+    // check if the column array size is consistent with the data
+    val elemSize = data(0)._2.length
+    if(column_names.nonEmpty) assert(column_names.length == elemSize)
+
+    //create comma separated string
+    val colString = getColNames(column_names).mkString(",") + "\n"
+    val dataString = data.map(x => x._2.mkString(",") + "," + x._1).mkString("\n")
+    val res = colString + dataString
+
+    res
+  }
+
+  /**
+   * Creates a new file in the S3 bucket with the results of the clustering.
+   * @param filename name of csv file
+   * @param data array of clustered data
+   * @param column_names array of colum names, this could be empty
+   * @return Unit
+   */
+  def writeResToCSV_AWS_S3(filename: String, data: Array[(Int, Vector[Double])],
+                             column_names: Vector[String] = Vector()) = {
+
+    val s3Client: AmazonS3 = AmazonS3ClientBuilder.defaultClient()
+
+    val bucketName = Const.bucket_name
+    val objectKey = filename
+    val objectContent = computeS3FileContent(data, column_names)
+
+    try{
+      //create new file in the specified bucket of s3
+      s3Client.putObject(bucketName, objectKey, objectContent)
+    }catch {
+      case e: AmazonServiceException => println("Error, AWS exception during writing result content on S3 file. (Error in function writeResToCSV_AWS_S3)"+e)
+      case e: Exception => println("Error during result content on S3 file.")
+    }
+  }
+
 
   /**
    * Write an RDD[Row] to a csv file

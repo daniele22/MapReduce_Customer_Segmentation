@@ -203,7 +203,7 @@ object Main {
     println("Running application...........")
 
     val spark: SparkSession = SparkSession.builder()
-//      .master("local[*]")
+//      .master("local[*]")  //TODO uncomment to run in local mode
       .appName("CustomerSegmentationApp")
       .getOrCreate()
     println("Setted spark session....")

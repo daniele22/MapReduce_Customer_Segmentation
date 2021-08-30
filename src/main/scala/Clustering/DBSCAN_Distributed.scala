@@ -17,14 +17,13 @@ import ScalaSparkDBSCAN.spatial.Point
 import ScalaSparkDBSCAN.util.io.IOHelper
 import Utils.Plot
 import Utils.Plot.savePairPlot
-import Utils.common.{time, writeListToTxt, writeResToCSV}
+import Utils.common.{time, writeListToTxt, writeResToCSV, writeResToCSV_AWS_S3}
 import org.apache.log4j.Level
 import org.apache.log4j.{Logger => mylogger}
 import org.apache.spark.sql.SparkSession
 import ScalaSparkDBSCAN.exploratoryAnalysis.DistanceToNearestNeighborDriver
 import org.apache.spark.rdd.RDD
 import ScalaSparkDBSCAN.exploratoryAnalysis.NumberOfPointsWithinDistanceDriver
-
 import Utils.Const._
 
 
@@ -159,7 +158,8 @@ object DBSCAN_Distributed extends java.io.Serializable{
     val clustered_points_rdd = model.allPoints.map(pt => (pt.clusterId.toInt, pt.coordinates.toVector))//.collect()
     val clustered_points = clustered_points_rdd.collect()
 
-//    writeResToCSV("/dbscan_clustering_results.csv", clustered_points, columns.toVector)
+//    writeResToCSV("dbscan_clustering_results.csv", clustered_points, columns.toVector) //run in local mode
+    writeResToCSV_AWS_S3("dbscan_clustering_results.csv", clustered_points, columns.toVector) //run on cluster
     if(plot_data)
       savePairPlot(clustered_points, columns, img_pkg_path+"/dbscan_pairplot.png")
 
