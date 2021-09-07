@@ -143,7 +143,7 @@ object preprocessing {
       else sqlString += "log("+col._1+" + 1) as "+col._1+", "
     }
     sqlString += "FROM global_temp.RFM"
-    val df_log = spark.sql(sqlString)
+    val df_log = spark.sql(sqlString) //execution of the query to get log scaled data
     df_log
   }
 
@@ -154,7 +154,8 @@ object preprocessing {
    * @param stategy the type of measure used to impute missing values, e.g. "mean", "median", ...
    * @return dataframe with imputed values
    */
-  private [preprocessing] def imputeMissingValues(dataframe: sql.DataFrame, columns: Array[String], stategy: String): sql.DataFrame = {
+  private [preprocessing] def imputeMissingValues(dataframe: sql.DataFrame,
+                                                  columns: Array[String], stategy: String): sql.DataFrame = {
     val imputer = new Imputer()
       .setInputCols(columns)
       .setOutputCols(columns)
@@ -343,6 +344,8 @@ object preprocessing {
 
   }
 
+  // this is needed to create a second version of the dataset with 6 features instead of only the three features
+  // of the RFM model
   def compute_instacart_additional_features(df: sql.DataFrame, df_rfm: sql.DataFrame, spark: SparkSession): Unit = {
     val df_peak = df.withColumn("order_on_peak",
       when(df.col("order_dow") <= 1,1).otherwise(0))
@@ -607,7 +610,7 @@ object preprocessing {
     df.describe().show()
 
     // 2. filter the data
-    val purchasedata = df.filter(df.col("event_type").contains("purchase"))
+    val purchasedata = df.filter(df.col("event_type").contains("purchase")) //we are interested only in purchase data
     println("purchase data show")
     purchasedata.show()
     purchasedata.describe().show()
@@ -627,7 +630,7 @@ object preprocessing {
     println("DF after filtering rows with negative values")
     df_notneg.describe().show()
 
-    // 5. remove useless columns: eval_set
+    // 5. remove useless columns: "category_code", "brand", "product_id", "category_id", "user_session"
     val df_removecol = df_notneg.drop("category_code", "brand", "product_id", "category_id", "user_session")
     println("DF after columns drop")
     df_removecol.describe().show()

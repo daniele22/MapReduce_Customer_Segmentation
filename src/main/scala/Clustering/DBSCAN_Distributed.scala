@@ -35,9 +35,9 @@ object DBSCAN_Distributed extends java.io.Serializable{
    * @return number of clusters
    */
   private [DBSCAN_Distributed] def numberOfClusters(model: DbscanModel): Int = {
-    val clusterIdsRdd: RDD[ClusterId] = model.allPoints.map(_.clusterId) // get the clusterid assigned to each point
+    val clusterIdsRdd: RDD[ClusterId] = model.allPoints.map(_.clusterId) // get the clusterId assigned to each point
       .distinct()  // get a new RDD containing the distinct elements in this RDD
-      .filter(clusterId => clusterId != DbscanModel.NoisePoint) // remove the clusterid equal to that assigned to noise point if present
+      .filter(clusterId => clusterId != DbscanModel.NoisePoint) // remove the clusterId equal to that assigned to noise point if present
       .cache()
     // count is an action, i.e. an eager operation that returns a single number.
     // The previous operations were transformations, they transformed an RDD into another lazily.

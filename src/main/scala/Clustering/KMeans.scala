@@ -85,8 +85,8 @@ object KMeans extends java.io.Serializable{
    */
   private [KMeans] def findClosest(p: Vector[Double],
                   centroids: Array[(Int, Vector[Double])]): Int =
-    centroids.map(c => (c._1, euclideanDistance(c._2, p))). // calculate the distance between p and each one of the centroids
-      minBy(_._2)._1 // take the centroid with the smallest euclidean distance and return its number
+    centroids.map(c => (c._1, euclideanDistance(c._2, p))) // calculate the distance between p and each one of the centroids
+      .minBy(_._2)._1 // take the centroid with the smallest euclidean distance and return its number
 
   /**
    * Compute the weighted mean of a single feature of two different points
@@ -134,9 +134,9 @@ object KMeans extends java.io.Serializable{
    */
   private [KMeans] def meanDistance(old_centroids: Array[(Int, Vector[Double])],
                    new_centroids: Array[(Int, Vector[Double])]): Double =
-    ((old_centroids zip new_centroids).
-      map (c => euclideanDistance(c._1._2, c._2._2)).
-      sum) / old_centroids.length
+    ((old_centroids zip new_centroids)
+      .map (c => euclideanDistance(c._1._2, c._2._2))
+      .sum) / old_centroids.length
 
   /**
    * Print centroids with their id
@@ -239,8 +239,8 @@ object KMeans extends java.io.Serializable{
     // Fix a seed to ensure reproducibility!
     var centroids =
     ((0 until numK) zip
-      input_data_points.takeSample(false, numK, 42)).
-      toArray
+      input_data_points.takeSample(false, numK, 42))
+      .toArray
 
     // print the initial centroids
     println("K Center points initialized :")
@@ -264,7 +264,7 @@ object KMeans extends java.io.Serializable{
       */
       val newCentroids = input_data_points
         .groupBy(p => (findClosest(p, centroids)))  // get the list of closed points foreach centroid
-        // compute the new position of the centroids, the first map phase creates a cuple and associates
+        // compute the new position of the centroids, the first map phase creates a couple and associates
         // the initial weight of 1.0, then a reduce phase is executed to compute the mean point
         .map(x => (x._1, (x._2.map((_, 1.0))).reduce(weightedMeanPoint)))
         .map(c => (c._1, c._2._1))  // create a couple with c_index and point coordinates, without the weight added before
@@ -288,7 +288,7 @@ object KMeans extends java.io.Serializable{
 
   // In this second version reduceByKey is used instead of groupBy, this should make this second version more efficient.
   // With this second version also problems related to the memory consumption can be avoided, indeed
-  // all the points are aggregated on a single node with groudBy and in the case of millions of date this could be
+  // all the points are aggregated on a single node with groudBy and in the case of millions of data this could be
   // a problem. With reduceByKey we can avoid that phenomenon.
   def run_kmeans_reducebykey(input_data_points: RDD[Vector[Double]], numK: Int, epsilon: Double) = {
 
@@ -314,7 +314,7 @@ object KMeans extends java.io.Serializable{
       /*
       A map is used to create couple (nearest centroid, (point, 1.0))
       The mean point for each one of the centroids will be calculated on each node
-      Then only those data (i.e. numK*numNodes) have to travel on the network twards the main node
+      Then only those data (i.e. numK*numNodes) have to travel on the network towards the main node
       This means a minor use of the network and so less time needed.
        */
       val newCentroids = input_data_points
@@ -338,6 +338,7 @@ object KMeans extends java.io.Serializable{
   }
 
   def run_kmeans_reducebykey_tailrec(input_data_points: RDD[Vector[Double]], numK: Int, epsilon: Double) = {
+
     // Initialize K random centroids, these will have the form of (centroid_number, coordinates: Array[Double])
     // so they are represented as couple, where the first element is an integer and represent the index of the centroid.
     // Fix a seed to ensure reproducibility!
@@ -394,7 +395,6 @@ object KMeans extends java.io.Serializable{
 
     val clustered_points = input_data_points.map(point => (findClosest(point, resultingCentroids), point))
     (resultingCentroids, clustered_points)
-
   }
 
 
